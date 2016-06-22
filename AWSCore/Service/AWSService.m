@@ -15,7 +15,6 @@
 
 #import "AWSService.h"
 
-#import <UIKit/UIKit.h>
 #import "AWSSynchronizedMutableDictionary.h"
 #import "AWSURLResponseSerialization.h"
 #import "AWSLogging.h"
@@ -31,33 +30,33 @@ static NSString *const AWSServiceConfigurationUnknown = @"Unknown";
 @implementation AWSService
 
 + (NSDictionary<NSString *, NSNumber *> *)errorCodeDictionary {
-    static NSDictionary *_errorCodeDictionary = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        _errorCodeDictionary = @{
-                                @"RequestTimeTooSkewed" : @(AWSServiceErrorRequestTimeTooSkewed),
-                                @"InvalidSignatureException" : @(AWSServiceErrorInvalidSignatureException),
-                                @"RequestExpired" : @(AWSServiceErrorRequestExpired),
-                                @"SignatureDoesNotMatch" : @(AWSServiceErrorSignatureDoesNotMatch),
-                                @"AuthFailure" : @(AWSServiceErrorAuthFailure),
-                                @"AccessDeniedException" : @(AWSServiceErrorAccessDeniedException),
-                                @"UnrecognizedClientException" : @(AWSServiceErrorUnrecognizedClientException),
-                                @"IncompleteSignature" : @(AWSServiceErrorIncompleteSignature),
-                                @"InvalidClientTokenId" : @(AWSServiceErrorInvalidClientTokenId),
-                                @"MissingAuthenticationToken" : @(AWSServiceErrorMissingAuthenticationToken),
-                                @"AccessDenied" : @(AWSServiceErrorAccessDenied),
-                                @"ExpiredToken" : @(AWSServiceErrorExpiredToken),
-                                @"InvalidAccessKeyId" : @(AWSServiceErrorInvalidAccessKeyId),
-                                @"InvalidToken" : @(AWSServiceErrorInvalidToken),
-                                @"TokenRefreshRequired" : @(AWSServiceErrorTokenRefreshRequired),
-                                @"AccessFailure" : @(AWSServiceErrorAccessFailure),
-                                @"AuthMissingFailure" : @(AWSServiceErrorAuthMissingFailure),
-                                @"Throttling" : @(AWSServiceErrorThrottling),
-                                @"ThrottlingException" : @(AWSServiceErrorThrottlingException),
-                                };
-    });
+  static NSDictionary *_errorCodeDictionary = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    _errorCodeDictionary = @{
+                             @"RequestTimeTooSkewed" : @(AWSServiceErrorRequestTimeTooSkewed),
+                             @"InvalidSignatureException" : @(AWSServiceErrorInvalidSignatureException),
+                             @"RequestExpired" : @(AWSServiceErrorRequestExpired),
+                             @"SignatureDoesNotMatch" : @(AWSServiceErrorSignatureDoesNotMatch),
+                             @"AuthFailure" : @(AWSServiceErrorAuthFailure),
+                             @"AccessDeniedException" : @(AWSServiceErrorAccessDeniedException),
+                             @"UnrecognizedClientException" : @(AWSServiceErrorUnrecognizedClientException),
+                             @"IncompleteSignature" : @(AWSServiceErrorIncompleteSignature),
+                             @"InvalidClientTokenId" : @(AWSServiceErrorInvalidClientTokenId),
+                             @"MissingAuthenticationToken" : @(AWSServiceErrorMissingAuthenticationToken),
+                             @"AccessDenied" : @(AWSServiceErrorAccessDenied),
+                             @"ExpiredToken" : @(AWSServiceErrorExpiredToken),
+                             @"InvalidAccessKeyId" : @(AWSServiceErrorInvalidAccessKeyId),
+                             @"InvalidToken" : @(AWSServiceErrorInvalidToken),
+                             @"TokenRefreshRequired" : @(AWSServiceErrorTokenRefreshRequired),
+                             @"AccessFailure" : @(AWSServiceErrorAccessFailure),
+                             @"AuthMissingFailure" : @(AWSServiceErrorAuthMissingFailure),
+                             @"Throttling" : @(AWSServiceErrorThrottling),
+                             @"ThrottlingException" : @(AWSServiceErrorThrottlingException),
+                             };
+  });
 
-    return _errorCodeDictionary;
+  return _errorCodeDictionary;
 }
 
 @end
@@ -73,27 +72,27 @@ static NSString *const AWSServiceConfigurationUnknown = @"Unknown";
 @implementation AWSServiceManager
 
 + (instancetype)defaultServiceManager {
-    static AWSServiceManager *_defaultServiceManager = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        _defaultServiceManager = [AWSServiceManager new];
-    });
+  static AWSServiceManager *_defaultServiceManager = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    _defaultServiceManager = [AWSServiceManager new];
+  });
 
-    return _defaultServiceManager;
+  return _defaultServiceManager;
 }
 
 - (instancetype)init {
-    if ( self = [super init]) {
-        _dictionary = [AWSSynchronizedMutableDictionary new];
-    }
-    return self;
+  if ( self = [super init]) {
+    _dictionary = [AWSSynchronizedMutableDictionary new];
+  }
+  return self;
 }
 
 - (void)setDefaultServiceConfiguration:(AWSServiceConfiguration *)defaultServiceConfiguration {
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        _defaultServiceConfiguration = [defaultServiceConfiguration copy];
-    });
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    _defaultServiceConfiguration = [defaultServiceConfiguration copy];
+  });
 }
 
 @end
@@ -112,93 +111,93 @@ static NSString *const AWSServiceConfigurationUnknown = @"Unknown";
 @implementation AWSServiceConfiguration
 
 - (instancetype)init {
-    @throw [NSException exceptionWithName:NSInternalInconsistencyException
-                                   reason:@"`- init` is not a valid initializer. Use `+ configurationWithRegion:credentialsProvider:` instead."
-                                 userInfo:nil];
+  @throw [NSException exceptionWithName:NSInternalInconsistencyException
+                                 reason:@"`- init` is not a valid initializer. Use `+ configurationWithRegion:credentialsProvider:` instead."
+                               userInfo:nil];
 }
 
 - (instancetype)initWithRegion:(AWSRegionType)regionType
            credentialsProvider:(id<AWSCredentialsProvider>)credentialsProvider {
-    if (self = [super init]) {
-        _regionType = regionType;
-        _credentialsProvider = credentialsProvider;
-    }
+  if (self = [super init]) {
+    _regionType = regionType;
+    _credentialsProvider = credentialsProvider;
+  }
 
-    return self;
+  return self;
 }
 
 + (NSString *)baseUserAgent {
-    static NSString *_userAgent = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        NSString *systemName = [[[UIDevice currentDevice] systemName] stringByReplacingOccurrencesOfString:@" " withString:@"-"];
-        if (!systemName) {
-            systemName = AWSServiceConfigurationUnknown;
-        }
-        NSString *systemVersion = [[UIDevice currentDevice] systemVersion];
-        if (!systemVersion) {
-            systemVersion = AWSServiceConfigurationUnknown;
-        }
-        NSString *localeIdentifier = [[NSLocale currentLocale] localeIdentifier];
-        if (!localeIdentifier) {
-            localeIdentifier = AWSServiceConfigurationUnknown;
-        }
-        _userAgent = [NSString stringWithFormat:@"aws-sdk-iOS/%@ %@/%@ %@", AWSiOSSDKVersion, systemName, systemVersion, localeIdentifier];
-    });
-
-    NSMutableString *userAgent = [NSMutableString stringWithString:_userAgent];
-    for (NSString *prefix in _globalUserAgentPrefixes) {
-        [userAgent appendFormat:@" %@", prefix];
+  static NSString *_userAgent = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    NSString *systemName = [[[NSProcessInfo processInfo] operatingSystemVersionString] stringByReplacingOccurrencesOfString:@" " withString:@"-"];
+    if (!systemName) {
+      systemName = AWSServiceConfigurationUnknown;
     }
+    NSString *systemVersion = [[NSProcessInfo processInfo] operatingSystemVersionString];
+    if (!systemVersion) {
+      systemVersion = AWSServiceConfigurationUnknown;
+    }
+    NSString *localeIdentifier = [[NSLocale currentLocale] localeIdentifier];
+    if (!localeIdentifier) {
+      localeIdentifier = AWSServiceConfigurationUnknown;
+    }
+    _userAgent = [NSString stringWithFormat:@"aws-sdk-iOS/%@ %@/%@ %@", AWSiOSSDKVersion, systemName, systemVersion, localeIdentifier];
+  });
 
-    return [NSString stringWithString:userAgent];
+  NSMutableString *userAgent = [NSMutableString stringWithString:_userAgent];
+  for (NSString *prefix in _globalUserAgentPrefixes) {
+    [userAgent appendFormat:@" %@", prefix];
+  }
+
+  return [NSString stringWithString:userAgent];
 }
 
 static NSMutableArray *_globalUserAgentPrefixes = nil;
 
 + (void)addGlobalUserAgentProductToken:(NSString *)productToken {
-    if (productToken) {
-        static dispatch_once_t onceToken;
-        dispatch_once(&onceToken, ^{
-            _globalUserAgentPrefixes = [NSMutableArray new];
-        });
+  if (productToken) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      _globalUserAgentPrefixes = [NSMutableArray new];
+    });
 
-        if (![_globalUserAgentPrefixes containsObject:productToken]) {
-            [_globalUserAgentPrefixes addObject:productToken];
-        }
+    if (![_globalUserAgentPrefixes containsObject:productToken]) {
+      [_globalUserAgentPrefixes addObject:productToken];
     }
+  }
 }
 
 - (NSString *)userAgent {
-    NSMutableString *userAgent = [NSMutableString stringWithString:[AWSServiceConfiguration baseUserAgent]];
-    for (NSString *prefix in self.userAgentProductTokens) {
-        [userAgent appendFormat:@" %@", prefix];
-    }
+  NSMutableString *userAgent = [NSMutableString stringWithString:[AWSServiceConfiguration baseUserAgent]];
+  for (NSString *prefix in self.userAgentProductTokens) {
+    [userAgent appendFormat:@" %@", prefix];
+  }
 
-    return [NSString stringWithString:userAgent];
+  return [NSString stringWithString:userAgent];
 }
 
 - (void)addUserAgentProductToken:(NSString *)productToken {
-    if (productToken) {
-        if (self.userAgentProductTokens) {
-            if (![self.userAgentProductTokens containsObject:productToken]) {
-                NSMutableArray *mutableArray = [NSMutableArray arrayWithArray:self.userAgentProductTokens];
-                [mutableArray addObject:productToken];
-                self.userAgentProductTokens = [NSArray arrayWithArray:mutableArray];
-            }
-        } else {
-            self.userAgentProductTokens = @[productToken];
-        }
+  if (productToken) {
+    if (self.userAgentProductTokens) {
+      if (![self.userAgentProductTokens containsObject:productToken]) {
+        NSMutableArray *mutableArray = [NSMutableArray arrayWithArray:self.userAgentProductTokens];
+        [mutableArray addObject:productToken];
+        self.userAgentProductTokens = [NSArray arrayWithArray:mutableArray];
+      }
+    } else {
+      self.userAgentProductTokens = @[productToken];
     }
+  }
 }
 
 - (id)copyWithZone:(NSZone *)zone {
-    AWSServiceConfiguration *configuration = [super copyWithZone:zone];
-    configuration.regionType = self.regionType;
-    configuration.credentialsProvider = self.credentialsProvider;
-    configuration.userAgentProductTokens = self.userAgentProductTokens;
-    
-    return configuration;
+  AWSServiceConfiguration *configuration = [super copyWithZone:zone];
+  configuration.regionType = self.regionType;
+  configuration.credentialsProvider = self.credentialsProvider;
+  configuration.userAgentProductTokens = self.userAgentProductTokens;
+
+  return configuration;
 }
 
 @end
@@ -244,137 +243,137 @@ static NSString *const AWSServiceNameSTS = @"sts";
 @implementation AWSEndpoint
 
 - (instancetype)init {
-    @throw [NSException exceptionWithName:NSInternalInconsistencyException
-                                   reason:@"`- init` is not a valid initializer. Use `- initWithRegion:service:useUnsafeURL:` instead."
-                                 userInfo:nil];
+  @throw [NSException exceptionWithName:NSInternalInconsistencyException
+                                 reason:@"`- init` is not a valid initializer. Use `- initWithRegion:service:useUnsafeURL:` instead."
+                               userInfo:nil];
 }
 
 - (instancetype)initWithRegion:(AWSRegionType)regionType
                        service:(AWSServiceType)serviceType
                   useUnsafeURL:(BOOL)useUnsafeURL {
-    if (self = [super init]) {
-        _regionType = regionType;
-        _serviceType = serviceType;
-        _useUnsafeURL = useUnsafeURL;
-        _regionName = [self regionNameFromType:regionType];
-        if (!_regionName) {
-            @throw [NSException exceptionWithName:NSInternalInconsistencyException
-                                           reason:@"Invalid region type."
-                                         userInfo:nil];
-        }
-        _serviceName = [self serviceNameFromType:serviceType];
-        if (!_serviceName) {
-            @throw [NSException exceptionWithName:NSInternalInconsistencyException
-                                           reason:@"Invalid service type."
-                                         userInfo:nil];
-        }
-        _URL = [self URLWithRegion:_regionType
-                        regionName:_regionName
-                           service:_serviceType
-                       serviceName:_serviceName
-                      useUnsafeURL:useUnsafeURL];
-        _hostName = [_URL host];
+  if (self = [super init]) {
+    _regionType = regionType;
+    _serviceType = serviceType;
+    _useUnsafeURL = useUnsafeURL;
+    _regionName = [self regionNameFromType:regionType];
+    if (!_regionName) {
+      @throw [NSException exceptionWithName:NSInternalInconsistencyException
+                                     reason:@"Invalid region type."
+                                   userInfo:nil];
     }
+    _serviceName = [self serviceNameFromType:serviceType];
+    if (!_serviceName) {
+      @throw [NSException exceptionWithName:NSInternalInconsistencyException
+                                     reason:@"Invalid service type."
+                                   userInfo:nil];
+    }
+    _URL = [self URLWithRegion:_regionType
+                    regionName:_regionName
+                       service:_serviceType
+                   serviceName:_serviceName
+                  useUnsafeURL:useUnsafeURL];
+    _hostName = [_URL host];
+  }
 
-    return self;
+  return self;
 }
 
 - (instancetype)initWithRegion:(AWSRegionType)regionType
                        service:(AWSServiceType)serviceType
                            URL:(NSURL *)URL {
-    if (self = [super init]) {
-        _regionType = regionType;
-        _serviceType = serviceType;
-        _useUnsafeURL = NO;
-        _regionName = [self regionNameFromType:regionType];
-        _serviceName = [self serviceNameFromType:serviceType];
-        _URL = URL;
-        _hostName = [_URL host];
-    }
+  if (self = [super init]) {
+    _regionType = regionType;
+    _serviceType = serviceType;
+    _useUnsafeURL = NO;
+    _regionName = [self regionNameFromType:regionType];
+    _serviceName = [self serviceNameFromType:serviceType];
+    _URL = URL;
+    _hostName = [_URL host];
+  }
 
-    return self;
+  return self;
 }
 
 - (NSString *)regionNameFromType:(AWSRegionType)regionType {
-    switch (regionType) {
-        case AWSRegionUSEast1:
-            return AWSRegionNameUSEast1;
-        case AWSRegionUSWest2:
-            return AWSRegionNameUSWest2;
-        case AWSRegionUSWest1:
-            return AWSRegionNameUSWest1;
-        case AWSRegionEUWest1:
-            return AWSRegionNameEUWest1;
-        case AWSRegionEUCentral1:
-            return AWSRegionNameEUCentral1;
-        case AWSRegionAPSoutheast1:
-            return AWSRegionNameAPSoutheast1;
-        case AWSRegionAPSoutheast2:
-            return AWSRegionNameAPSoutheast2;
-        case AWSRegionAPNortheast1:
-            return AWSRegionNameAPNortheast1;
-        case AWSRegionAPNortheast2:
-            return AWSRegionNameAPNortheast2;
-        case AWSRegionSAEast1:
-            return AWSRegionNameSAEast1;
-        case AWSRegionCNNorth1:
-            return AWSRegionNameCNNorth1;
-        case AWSRegionUSGovWest1:
-            return AWSRegionNameUSGovWest1;
-        default:
-            return nil;
-    }
+  switch (regionType) {
+    case AWSRegionUSEast1:
+      return AWSRegionNameUSEast1;
+    case AWSRegionUSWest2:
+      return AWSRegionNameUSWest2;
+    case AWSRegionUSWest1:
+      return AWSRegionNameUSWest1;
+    case AWSRegionEUWest1:
+      return AWSRegionNameEUWest1;
+    case AWSRegionEUCentral1:
+      return AWSRegionNameEUCentral1;
+    case AWSRegionAPSoutheast1:
+      return AWSRegionNameAPSoutheast1;
+    case AWSRegionAPSoutheast2:
+      return AWSRegionNameAPSoutheast2;
+    case AWSRegionAPNortheast1:
+      return AWSRegionNameAPNortheast1;
+    case AWSRegionAPNortheast2:
+      return AWSRegionNameAPNortheast2;
+    case AWSRegionSAEast1:
+      return AWSRegionNameSAEast1;
+    case AWSRegionCNNorth1:
+      return AWSRegionNameCNNorth1;
+    case AWSRegionUSGovWest1:
+      return AWSRegionNameUSGovWest1;
+    default:
+      return nil;
+  }
 }
 
 - (NSString *)serviceNameFromType:(AWSServiceType)serviceType {
-    switch (serviceType) {
-        case AWSServiceAPIGateway:
-            return AWSServiceNameAPIGateway;
-        case AWSServiceAutoScaling:
-            return AWSServiceNameAutoScaling;
-        case AWSServiceCloudWatch:
-            return AWSServiceNameCloudWatch;
-        case AWSServiceCognitoIdentity:
-            return AWSServiceNameCognitoIdentity;
-        case AWSServiceCognitoIdentityProvider:
-            return AWSServiceNameCognitoIdentityProvider;
-        case AWSServiceCognitoSync:
-            return AWSServiceNameCognitoSync;
-        case AWSServiceDynamoDB:
-            return AWSServiceNameDynamoDB;
-        case AWSServiceEC2:
-            return AWSServiceNameEC2;
-        case AWSServiceElasticLoadBalancing:
-            return AWSServiceNameElasticLoadBalancing;
-        case AWSServiceIoT:
-            return AWSServiceNameIoT;
-        case AWSServiceIoTData:
-            return AWSServiceNameIoTData;
-        case AWSServiceFirehose:
-            return AWSServiceNameFirehose;
-        case AWSServiceKinesis:
-            return AWSServiceNameKinesis;
-        case AWSServiceLambda:
-            return AWSServiceNameLambda;
-        case AWSServiceMachineLearning:
-            return AWSServiceNameMachineLearning;
-        case AWSServiceMobileAnalytics:
-            return AWSServiceNameMobileAnalytics;
-        case AWSServiceS3:
-            return AWSServiceNameS3;
-        case AWSServiceSES:
-            return AWSServiceNameSES;
-        case AWSServiceSimpleDB:
-            return AWSServiceNameSimpleDB;
-        case AWSServiceSNS:
-            return AWSServiceNameSNS;
-        case AWSServiceSQS:
-            return AWSServiceNameSQS;
-        case AWSServiceSTS:
-            return AWSServiceNameSTS;
-        default:
-            return nil;
-    }
+  switch (serviceType) {
+    case AWSServiceAPIGateway:
+      return AWSServiceNameAPIGateway;
+    case AWSServiceAutoScaling:
+      return AWSServiceNameAutoScaling;
+    case AWSServiceCloudWatch:
+      return AWSServiceNameCloudWatch;
+    case AWSServiceCognitoIdentity:
+      return AWSServiceNameCognitoIdentity;
+    case AWSServiceCognitoIdentityProvider:
+      return AWSServiceNameCognitoIdentityProvider;
+    case AWSServiceCognitoSync:
+      return AWSServiceNameCognitoSync;
+    case AWSServiceDynamoDB:
+      return AWSServiceNameDynamoDB;
+    case AWSServiceEC2:
+      return AWSServiceNameEC2;
+    case AWSServiceElasticLoadBalancing:
+      return AWSServiceNameElasticLoadBalancing;
+    case AWSServiceIoT:
+      return AWSServiceNameIoT;
+    case AWSServiceIoTData:
+      return AWSServiceNameIoTData;
+    case AWSServiceFirehose:
+      return AWSServiceNameFirehose;
+    case AWSServiceKinesis:
+      return AWSServiceNameKinesis;
+    case AWSServiceLambda:
+      return AWSServiceNameLambda;
+    case AWSServiceMachineLearning:
+      return AWSServiceNameMachineLearning;
+    case AWSServiceMobileAnalytics:
+      return AWSServiceNameMobileAnalytics;
+    case AWSServiceS3:
+      return AWSServiceNameS3;
+    case AWSServiceSES:
+      return AWSServiceNameSES;
+    case AWSServiceSimpleDB:
+      return AWSServiceNameSimpleDB;
+    case AWSServiceSNS:
+      return AWSServiceNameSNS;
+    case AWSServiceSQS:
+      return AWSServiceNameSQS;
+    case AWSServiceSTS:
+      return AWSServiceNameSTS;
+    default:
+      return nil;
+  }
 }
 
 - (NSURL *)URLWithRegion:(AWSRegionType)regionType
@@ -382,55 +381,55 @@ static NSString *const AWSServiceNameSTS = @"sts";
                  service:(AWSServiceType)serviceType
              serviceName:(NSString *)serviceName
             useUnsafeURL:(BOOL)useUnsafeURL {
-    NSURL *URL = nil;
+  NSURL *URL = nil;
 
-    NSString *separator = @".";
-    if (serviceType == AWSServiceS3
-        && (regionType == AWSRegionUSEast1
-            || regionType == AWSRegionUSWest1
-            || regionType == AWSRegionUSWest2
-            || regionType == AWSRegionEUWest1
-            || regionType == AWSRegionAPSoutheast1
-            || regionType == AWSRegionAPNortheast1
-            || regionType == AWSRegionAPNortheast2
-            || regionType == AWSRegionAPSoutheast2
-            || regionType == AWSRegionSAEast1
-            || regionType == AWSRegionUSGovWest1)) {
-            separator = @"-";
-        }
+  NSString *separator = @".";
+  if (serviceType == AWSServiceS3
+      && (regionType == AWSRegionUSEast1
+          || regionType == AWSRegionUSWest1
+          || regionType == AWSRegionUSWest2
+          || regionType == AWSRegionEUWest1
+          || regionType == AWSRegionAPSoutheast1
+          || regionType == AWSRegionAPNortheast1
+          || regionType == AWSRegionAPNortheast2
+          || regionType == AWSRegionAPSoutheast2
+          || regionType == AWSRegionSAEast1
+          || regionType == AWSRegionUSGovWest1)) {
+        separator = @"-";
+      }
 
-    NSString *HTTPType = @"https";
-    if (useUnsafeURL) {
-        HTTPType = @"http";
-    }
+  NSString *HTTPType = @"https";
+  if (useUnsafeURL) {
+    HTTPType = @"http";
+  }
 
-    if (serviceType == AWSServiceS3 && regionType == AWSRegionUSEast1) {
-        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://s3.amazonaws.com", HTTPType]];
-    } else if (serviceType == AWSServiceSTS) {
-        if (regionType == AWSRegionCNNorth1) {
-            URL = [NSURL URLWithString:@"https://sts.cn-north-1.amazonaws.com"];
-        } else if (regionType == AWSRegionUSGovWest1) {
-            URL = [NSURL URLWithString:@"https://sts.us-gov-west-1.amazonaws.com"];
-        } else {
-            URL = [NSURL URLWithString:@"https://sts.amazonaws.com"];
-        }
-    } else if (serviceType == AWSServiceSimpleDB && regionType == AWSRegionUSEast1) {
-        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://sdb.amazonaws.com", HTTPType]];
-    } else if (serviceType == AWSServiceIoT) {
-        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://iot%@%@.amazonaws.com", HTTPType, separator, regionName]];
-    } else if (serviceType == AWSServiceIoTData) {
-        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://data%@iot%@%@.amazonaws.com", HTTPType, separator, separator, regionName]];
+  if (serviceType == AWSServiceS3 && regionType == AWSRegionUSEast1) {
+    URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://s3.amazonaws.com", HTTPType]];
+  } else if (serviceType == AWSServiceSTS) {
+    if (regionType == AWSRegionCNNorth1) {
+      URL = [NSURL URLWithString:@"https://sts.cn-north-1.amazonaws.com"];
+    } else if (regionType == AWSRegionUSGovWest1) {
+      URL = [NSURL URLWithString:@"https://sts.us-gov-west-1.amazonaws.com"];
     } else {
-        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://%@%@%@.amazonaws.com", HTTPType, serviceName, separator, regionName]];
+      URL = [NSURL URLWithString:@"https://sts.amazonaws.com"];
     }
+  } else if (serviceType == AWSServiceSimpleDB && regionType == AWSRegionUSEast1) {
+    URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://sdb.amazonaws.com", HTTPType]];
+  } else if (serviceType == AWSServiceIoT) {
+    URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://iot%@%@.amazonaws.com", HTTPType, separator, regionName]];
+  } else if (serviceType == AWSServiceIoTData) {
+    URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://data%@iot%@%@.amazonaws.com", HTTPType, separator, separator, regionName]];
+  } else {
+    URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://%@%@%@.amazonaws.com", HTTPType, serviceName, separator, regionName]];
+  }
 
-    //need to add ".cn" at end of URL if it is in China Region
-    if ([regionName hasPrefix:@"cn"]) {
-        NSString *urlString = [URL absoluteString];
-        URL = [NSURL URLWithString:[urlString stringByAppendingString:@".cn"]];
-    }
-    
-    return URL;
+  //need to add ".cn" at end of URL if it is in China Region
+  if ([regionName hasPrefix:@"cn"]) {
+    NSString *urlString = [URL absoluteString];
+    URL = [NSURL URLWithString:[urlString stringByAppendingString:@".cn"]];
+  }
+
+  return URL;
 }
 
 @end
