@@ -14,26 +14,16 @@
 //
 
 #import <XCTest/XCTest.h>
-#import "AWSCognitoIdentityProvider.h"
-#import "AWSTestUtility.h"
 
-@interface AWSCognitoIdentityProviderTests : XCTestCase
-
-@property AWSCognitoIdentityProvider *client;
+@interface AWSCognitoIdentityProviderUnitTests : XCTestCase
 
 @end
 
-@implementation AWSCognitoIdentityProviderTests
+@implementation AWSCognitoIdentityProviderUnitTests
 
 - (void)setUp {
     [super setUp];
     // Put setup code here. This method is called before the invocation of each test method in the class.
-    NSString *key = @"AWSCognitoIdentityProviderTests";
-
-    AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoIdentityProvider registerCognitoIdentityProviderWithConfiguration:configuration forKey:key];
-    
-    self.client = [AWSCognitoIdentityProvider CognitoIdentityProviderForKey:key];
 }
 
 - (void)tearDown {

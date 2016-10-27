@@ -21,8 +21,8 @@
 #import "AWSUICKeyChainStore.h"
 #import <CommonCrypto/CommonHMAC.h>
 #import "NSData+AWSCognitoIdentityProvider.h"
+#import "AWSCognitoIdentityProviderModel.h"
 
-static AWSUICKeyChainStore *keychain = nil;
 static const NSString * AWSCognitoIdentityUserPoolCurrentUser = @"currentUser";
 
 @interface AWSCognitoIdentityUserPool()
@@ -129,7 +129,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
     request.username = username;
     request.password = password;
     request.userAttributes = userAttributes;
-    request.validationData = [self getValidationData:validationData];
+    request.validationData = [self getValidationDataAsArray:validationData];
     request.secretHash = [self calculateSecretHash:username];
     return [[self.client signUp:request] continueWithSuccessBlock:^id _Nullable(AWSTask<AWSCognitoIdentityProviderSignUpResponse *> * _Nonnull task) {
         AWSCognitoIdentityUser * user = [[AWSCognitoIdentityUser alloc] initWithUsername:username pool:self];
@@ -177,18 +177,18 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void) clearAll {
-    NSArray *keys = keychain.allKeys;
+    NSArray *keys = self.keychain.allKeys;
     NSString *keyChainPrefix = [NSString stringWithFormat:@"%@.", self.userPoolConfiguration.clientId];
     for (NSString *key in keys) {
         if([key hasPrefix:keyChainPrefix]){
-            [keychain removeItemForKey:key];
+            [self.keychain removeItemForKey:key];
         }
     }
 }
 
 #pragma mark identity provider
 - (NSString *) identityProviderName {
-    return [NSString stringWithFormat:@"cognito-idp.us-east-1.amazonaws.com/%@", self.userPoolConfiguration.poolId];
+    return [NSString stringWithFormat:@"%@/%@", self.client.configuration.endpoint.hostName, self.userPoolConfiguration.poolId];
 }
 
 - (AWSTask<NSString*>*) token {
@@ -230,12 +230,12 @@ AWSCognitoIdentityUserAttributeType* attribute(NSString *name, NSString *value) 
     return attr;
 }
 
-- (NSArray<AWSCognitoIdentityProviderAttributeType *>*)cognitoValidationData {
+- (NSDictionary<NSString *,NSString *>*)cognitoValidationData {
     UIDevice *device = [UIDevice currentDevice];
     NSBundle *bundle = [NSBundle mainBundle];
     NSString *bundleVersion = [bundle objectForInfoDictionaryKey:(NSString*)kCFBundleVersionKey];
     NSString *bundleShortVersion = [bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
-    NSMutableArray * result = [NSMutableArray new];
+    NSMutableDictionary * result = [NSMutableDictionary new];
 
     NSArray * atts = @[
                        attribute(@"cognito:iOSVersion", device.systemVersion),
@@ -249,27 +249,36 @@ AWSCognitoIdentityUserAttributeType* attribute(NSString *name, NSString *value) 
                        ];
     for (AWSCognitoIdentityUserAttributeType *att in atts) {
         if(att.value != nil) {
-            [result addObject:att];
+            [result setObject:att.value forKey: att.name];
         }
     }
     return result;
 }
 
-- (NSArray<AWSCognitoIdentityProviderAttributeType*>*)getValidationData:(NSArray<AWSCognitoIdentityUserAttributeType*>*)devProvidedValidationData {
-    NSMutableArray *result = [NSMutableArray new];
+- (NSDictionary<NSString*, NSString *>*)getValidationData:(NSArray<AWSCognitoIdentityUserAttributeType*>*)devProvidedValidationData {
+    NSMutableDictionary *result = [NSMutableDictionary new];
     if (self.userPoolConfiguration.shouldProvideCognitoValidationData) {
-        [result addObjectsFromArray:[self cognitoValidationData]];
-    } else {
-        if (devProvidedValidationData != nil) {
-            for (AWSCognitoIdentityUserAttributeType * attribute in devProvidedValidationData) {
-                AWSCognitoIdentityProviderAttributeType *internalType = [AWSCognitoIdentityProviderAttributeType new];
-                internalType.name = attribute.name;
-                internalType.value = attribute.value;
-                [result addObject:internalType];
-            }
+        [result addEntriesFromDictionary:[self cognitoValidationData]];
+    }
+    if (devProvidedValidationData != nil) {
+        for (AWSCognitoIdentityUserAttributeType * att in devProvidedValidationData) {
+            [result setObject:att.value forKey: att.name];
         }
     }
     return result;
+}
+
+- (NSArray<AWSCognitoIdentityUserAttributeType*>*) getValidationDataAsArray:(NSArray<AWSCognitoIdentityUserAttributeType*>*)devProvidedValidationData {
+    NSDictionary * dictionary = [self getValidationData:devProvidedValidationData];
+    NSMutableArray * result = [NSMutableArray new];
+    [dictionary enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL* stop) {
+        [result addObject:attribute(key,value)];
+    }];
+    return result;
+}
+
+- (NSString*) strippedPoolId {
+    return [self.userPoolConfiguration.poolId substringFromIndex:[self.userPoolConfiguration.poolId rangeOfString:@"_" ].location+1];
 }
 
 @end
@@ -317,18 +326,24 @@ shouldProvideCognitoValidationData:(BOOL)shouldProvideCognitoValidationData {
 -(instancetype) initWithLastKnownUsername: (NSString *) lastKnownUsername {
     self = [super init];
     if(nil != self){
-        self.lastKnownUsername = lastKnownUsername;
+        _lastKnownUsername = lastKnownUsername;
     }
     return self;
 }
 @end
 
 @implementation AWSCognitoIdentityMultifactorAuthenticationInput
--(instancetype) initWithDeliveryMedium: (AWSCognitoIdentityProviderDeliveryMediumType) deliveryMedium destination:(NSString *) destination {
+-(instancetype) initWithDeliveryMedium: (NSString*) deliveryMedium destination:(NSString *) destination {
     self = [super init];
     if(nil != self){
-        self.deliveryMedium = deliveryMedium;
-        self.destination = destination;
+        if ([deliveryMedium isEqualToString:@"SMS"]) {
+            _deliveryMedium = AWSCognitoIdentityProviderDeliveryMediumTypeSms;
+        }else if ([deliveryMedium isEqualToString:@"EMAIL"]) {
+            _deliveryMedium = AWSCognitoIdentityProviderDeliveryMediumTypeEmail;
+        }else {
+            _deliveryMedium = AWSCognitoIdentityProviderDeliveryMediumTypeUnknown;
+        }
+        _destination = destination;
     }
     return self;
 }
@@ -339,11 +354,68 @@ shouldProvideCognitoValidationData:(BOOL)shouldProvideCognitoValidationData {
                         password: (NSString *) password {
     self = [super init];
     if(nil != self){
-        self.username = username;
-        self.password = password;
+        _username = username;
+        _password = password;
     }
     return self;
 }
+@end
+
+
+@implementation AWSCognitoIdentityCustomAuthenticationInput
+-(instancetype) initWithChallengeParameters: (NSDictionary<NSString*,NSString*> *) challengeParameters {
+    self = [super init];
+    if(nil != self){
+        _challengeParameters = challengeParameters;
+    }
+    return self;
+}
+@end
+
+
+@implementation AWSCognitoIdentityCustomChallengeDetails
+-(instancetype) initWithChallengeResponses:(NSDictionary<NSString *,NSString *> *)challengeResponses {
+    self = [super init];
+    if(nil != self){
+        _challengeResponses = challengeResponses;
+    }
+    return self;
+}
+@end
+
+
+@implementation AWSCognitoIdentityNewPasswordRequiredInput
+-(instancetype) initWithUserAttributes: (NSDictionary<NSString*,NSString*> *) userAttributes requiredAttributes: (NSSet<NSString*>*) requiredAttributes {
+    self = [super init];
+    if(nil != self){
+        _userAttributes = userAttributes;
+        _requiredAttributes = requiredAttributes;
+    }
+    return self;
+}
+@end
+
+@implementation AWSCognitoIdentityNewPasswordRequiredDetails
+-(instancetype) initWithProposedPassword: (NSString *) proposedPassword userAttributes:(NSDictionary<NSString*,NSString*> *) userAttributes {
+    NSMutableArray *userAttributesArray = [NSMutableArray<AWSCognitoIdentityUserAttributeType *> new];
+    if(userAttributes){
+        [userAttributes enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL* stop) {
+            AWSCognitoIdentityUserAttributeType * att = [[AWSCognitoIdentityUserAttributeType alloc] initWithName: key value: value];
+            [userAttributesArray addObject:att];
+        }];
+    }
+    return [self initWithProposedPassword:proposedPassword userAttributesArray:userAttributesArray];
+}
+
+-(instancetype) initWithProposedPassword: (NSString *) proposedPassword userAttributesArray:(NSArray<AWSCognitoIdentityUserAttributeType*> *) userAttributesArray {
+    self = [super init];
+    if(nil != self){
+        _userAttributes = userAttributesArray;
+        _proposedPassword  = proposedPassword;
+    }
+    return self;
+}
+
 @end
 
 @implementation AWSCognitoIdentityUserPoolSignUpResponse

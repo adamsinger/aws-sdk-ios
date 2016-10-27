@@ -1,5 +1,109 @@
 # AWS Mobile SDK for iOS CHANGELOG
 
+## 2.4.11
+### New Features
+* **SDK Core**
+	* Introducing new AWS `USEast2` (Ohio) region, endpoint `us-east-2`. 
+    
+### Resolved Issues
+
+* **Amazon API Gateway**
+    * Fixed a URL encoding bug. [Github Issue 491](https://github.com/aws/aws-sdk-ios/issues/491)
+
+
+## 2.4.10
+### New Features
+* **Amazon API Gateway**
+	* Added support for a custom API invoker method with configurable HTTP parameters.
+* **Amazon Cognito Identity Provider**
+    * Added support for end user to set password and required attributes during initial authentication if they were created using AdminCreateUser. 
+    
+### Resolved Issues
+
+* **Amazon Cognito Identity Provider**
+    * Fixed a bug causing AWSCognitoIdentityUserPool.clearAll to not clear the keychain. [Github Issue #476](https://github.com/aws/aws-sdk-ios/issues/476)
+
+* **Amazon S3**
+    * Fixed a bug which disabled creating an empty folder. [Github Issue #480](https://github.com/aws/aws-sdk-ios/issues/480)
+    * Fixed a bug which did not set error object when bucket name is empty in request. [Github Issue #469](https://github.com/aws/aws-sdk-ios/issues/469)
+
+## 2.4.9
+### New Features
+* **All Services**
+    * Added support for Custom Endpoints.
+
+### Resolved Issues
+* **Amazon S3**
+    * Fixed a bug which caused compilation errors when using SDK version 2.4.8 through CocoaPods.
+
+### Misc. Updates
+* **Amazon Mobile Analytics**
+    * Deprecated the `mobileAnalyticsForAppId:identityPoolId:` and `mobileAnalyticsForAppId:identityPoolId:completionBlock:` client initializers. 
+
+## 2.4.8
+### New Features
+* **Amazon Cognito Identity Provider**
+    * Added feature for custom authentication handlers.
+    * Added support for getDevice, forgetDevice and added convenience methods to perform operations on this device.
+
+### Misc Changes
+* **All Services**
+    * Updated all of the low-level clients with the latest models.
+
+## 2.4.7
+### Resolved Issues
+* **Amazon Cognito Identity Provider**
+	* Fixed integration between Cognito Identity Provider and Cognito Identity. [#438](https://github.com/aws/aws-sdk-ios/issues/438)
+
+## 2.4.6
+### New Features  
+* **SDK Core**
+    * Added support for shared container identifier for extension support.
+* **AWS Cognito Identity Provider**
+    * Added support for devices in Cognito User Pools.
+    * Added support for global sign out in Cognito User Pools.
+    * Updated to support GA Cognito User Pools API's with exception of custom authentication. Custom authentication will be supported in a future release.
+* **AWS S3**
+    * Added userInfo to error objects in AWSS3TransferUtility.
+* **Amazon SNS**
+    * General service updates.
+
+### Resolved Issues
+* **Amazon Cognito Identity Provider**
+    * Made providerId nullable in AWSCredentialProvider.
+    * Fixed non-optional error parameter in Cognito User Pools.
+    * Fixed issue causing resendConfirmationCode to return a null destination in Cognito User Pools.
+* **Amazon S3**
+    * Switched behavior from assert to throwing exception in AWSS3TransferUtility when response is not of class NSHTTPURLResponse type to avoid crashes.
+* **Amazon Mobile Analytics**
+    * Bug fix for [issue](https://github.com/aws/aws-sdk-ios/issues/409). Please refer to [this forum post](https://forums.aws.amazon.com/ann.jspa?annID=3935) for more details .
+    
+## 2.4.5
+### New Features  
+* **SDK Core**
+	* Introducing new AWS region Asia Pacific (Mumbai) region, endpoint `ap-south-1`.     
+
+### Resolved Issues
+* **SDK Core**
+    * Fixed a bug with response serialization to sometimes fail.
+
+## 2.4.4
+### New Features  
+* **SDK Core**
+    * Added SAML support for `Amazon Cognito Federated Identities`.     
+### Resolved Issues
+* **SDK Core**
+    * Fixed a bug causing SDK to use legacy flow instead of enhanced flow when `IdentityProviderManager` is set.
+
+## 2.4.3
+### New Features  
+* **Amazon S3**
+    * Added support for Amazon S3 Transfer Acceleration in `AWSS3TransferUtility`.        
+
+### Resolved Issues
+* **Amazon S3**
+    * Fixed the [issue](https://github.com/aws/aws-sdk-ios/issues/390) related to wrong error handling in AWSS3TransferUtility.
+
 ## 2.4.2
 ### New Features  
 * **SDK Core**

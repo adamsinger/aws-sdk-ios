@@ -12,61 +12,70 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-
 #import <UIKit/UIKit.h>
 #import <XCTest/XCTest.h>
 #import "OCMock.h"
-#import "AWSTestUtility.h"
-#import "AWSCognitoSignIn.h"
+#import "AWSIoT.h"
 
 static id mockNetworking = nil;
 
-@interface AWSGeneralCognitoSignInTests : XCTestCase
+@interface AWSIoTUnitTests : XCTestCase
 
 @end
 
-@implementation AWSGeneralCognitoSignInTests
+@implementation AWSIoTUnitTests
+
+- (void)setupCredentialsProvider {
+    
+    AWSStaticCredentialsProvider *credentialsProvider = [[AWSStaticCredentialsProvider alloc] initWithAccessKey:@"testAccessKey" secretKey:@"testSecretKey"];
+    
+    AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1
+                                                                         credentialsProvider:credentialsProvider];
+    [AWSServiceManager defaultServiceManager].defaultServiceConfiguration = configuration;
+    
+}
 
 - (void)setUp {
     [super setUp];
-    [AWSTestUtility setupFakeCognitoCredentialsProvider];
-
+    [self setupCredentialsProvider];
+    
     mockNetworking = OCMClassMock([AWSNetworking class]);
     AWSTask *errorTask = [AWSTask taskWithError:[NSError errorWithDomain:@"OCMockExpectedNetworkingError" code:8848 userInfo:nil]];
     OCMStub([mockNetworking sendRequest:[OCMArg isKindOfClass:[AWSNetworkingRequest class]]]).andReturn(errorTask);
+
 }
 
 - (void)tearDown {
+    // Put teardown code here. This method is called after the invocation of each test method in the class.
     [super tearDown];
 }
 
 - (void)testConstructors {
-    NSString *key = @"testCognitoSignInConstructors";
-    XCTAssertNotNil([AWSCognitoSignIn defaultCognitoSignIn]);
-    XCTAssertEqual([[AWSCognitoSignIn defaultCognitoSignIn] class], [AWSCognitoSignIn class]);
-    XCTAssertNil([AWSCognitoSignIn CognitoSignInForKey:key]);
-
-    AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionSAEast1 credentialsProvider:[AWSServiceManager defaultServiceManager].defaultServiceConfiguration.credentialsProvider];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-    XCTAssertNotNil([AWSCognitoSignIn CognitoSignInForKey:key]);
-    XCTAssertEqual([[AWSCognitoSignIn CognitoSignInForKey:key] class], [AWSCognitoSignIn class]);
-    XCTAssertEqual([AWSCognitoSignIn CognitoSignInForKey:key].configuration.regionType, AWSRegionSAEast1);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
-    XCTAssertNil([AWSCognitoSignIn CognitoSignInForKey:key]);
-
+    NSString *key = @"testIOTConstructors";
+    XCTAssertNotNil([AWSIoT defaultIoT]);
+    XCTAssertEqual([[AWSIoT defaultIoT] class], [AWSIoT class]);
+    XCTAssertNil([AWSIoT IoTForKey:key]);
+    
+    AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:[AWSServiceManager defaultServiceManager].defaultServiceConfiguration.credentialsProvider];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    XCTAssertNotNil([AWSIoT IoTForKey:key]);
+    XCTAssertEqual([[AWSIoT IoTForKey:key] class], [AWSIoT class]);
+    XCTAssertEqual([AWSIoT IoTForKey:key].configuration.regionType, AWSRegionUSEast1);
+    
+    [AWSIoT removeIoTForKey:key];
+    XCTAssertNil([AWSIoT IoTForKey:key]);
 }
 
-- (void)testAddCustomAttributes {
-    NSString *key = @"testAddCustomAttributes";
+- (void)testAcceptCertificateTransfer {
+    NSString *key = @"testAcceptCertificateTransfer";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] addCustomAttributes:[AWSCognitoSignInAddCustomAttributesRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] acceptCertificateTransfer:[AWSIoTAcceptCertificateTransferRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -74,22 +83,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testAdminConfirmSignUp {
-    NSString *key = @"testAdminConfirmSignUp";
+- (void)testAttachPrincipalPolicy {
+    NSString *key = @"testAttachPrincipalPolicy";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] adminConfirmSignUp:[AWSCognitoSignInAdminConfirmSignUpRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] attachPrincipalPolicy:[AWSIoTAttachPrincipalPolicyRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -97,22 +106,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testAdminDeleteUser {
-    NSString *key = @"testAdminDeleteUser";
+- (void)testAttachThingPrincipal {
+    NSString *key = @"testAttachThingPrincipal";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] adminDeleteUser:[AWSCognitoSignInAdminDeleteUserRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] attachThingPrincipal:[AWSIoTAttachThingPrincipalRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -120,22 +129,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testAdminDeleteUserAttributes {
-    NSString *key = @"testAdminDeleteUserAttributes";
+- (void)testCancelCertificateTransfer {
+    NSString *key = @"testCancelCertificateTransfer";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] adminDeleteUserAttributes:[AWSCognitoSignInAdminDeleteUserAttributesRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] cancelCertificateTransfer:[AWSIoTCancelCertificateTransferRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -143,22 +152,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testAdminDisableUser {
-    NSString *key = @"testAdminDisableUser";
+- (void)testCreateCertificateFromCsr {
+    NSString *key = @"testCreateCertificateFromCsr";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] adminDisableUser:[AWSCognitoSignInAdminDisableUserRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] createCertificateFromCsr:[AWSIoTCreateCertificateFromCsrRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -166,22 +175,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testAdminEnableUser {
-    NSString *key = @"testAdminEnableUser";
+- (void)testCreateKeysAndCertificate {
+    NSString *key = @"testCreateKeysAndCertificate";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] adminEnableUser:[AWSCognitoSignInAdminEnableUserRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] createKeysAndCertificate:[AWSIoTCreateKeysAndCertificateRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -189,22 +198,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testAdminGetUser {
-    NSString *key = @"testAdminGetUser";
+- (void)testCreatePolicy {
+    NSString *key = @"testCreatePolicy";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] adminGetUser:[AWSCognitoSignInAdminGetUserRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] createPolicy:[AWSIoTCreatePolicyRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -212,22 +221,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testAdminResetUserPassword {
-    NSString *key = @"testAdminResetUserPassword";
+- (void)testCreatePolicyVersion {
+    NSString *key = @"testCreatePolicyVersion";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] adminResetUserPassword:[AWSCognitoSignInAdminResetUserPasswordRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] createPolicyVersion:[AWSIoTCreatePolicyVersionRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -235,22 +244,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testAdminUpdateUserAttributes {
-    NSString *key = @"testAdminUpdateUserAttributes";
+- (void)testCreateThing {
+    NSString *key = @"testCreateThing";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] adminUpdateUserAttributes:[AWSCognitoSignInAdminUpdateUserAttributesRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] createThing:[AWSIoTCreateThingRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -258,22 +267,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testAuthenticate {
-    NSString *key = @"testAuthenticate";
+- (void)testCreateTopicRule {
+    NSString *key = @"testCreateTopicRule";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] authenticate:[AWSCognitoSignInAuthenticateRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] createTopicRule:[AWSIoTCreateTopicRuleRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -281,22 +290,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testChangePassword {
-    NSString *key = @"testChangePassword";
+- (void)testDeleteCertificate {
+    NSString *key = @"testDeleteCertificate";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] changePassword:[AWSCognitoSignInChangePasswordRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] deleteCertificate:[AWSIoTDeleteCertificateRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -304,22 +313,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testConfirmForgotPassword {
-    NSString *key = @"testConfirmForgotPassword";
+- (void)testDeletePolicy {
+    NSString *key = @"testDeletePolicy";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] confirmForgotPassword:[AWSCognitoSignInConfirmForgotPasswordRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] deletePolicy:[AWSIoTDeletePolicyRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -327,22 +336,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testConfirmSignUp {
-    NSString *key = @"testConfirmSignUp";
+- (void)testDeletePolicyVersion {
+    NSString *key = @"testDeletePolicyVersion";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] confirmSignUp:[AWSCognitoSignInConfirmSignUpRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] deletePolicyVersion:[AWSIoTDeletePolicyVersionRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -350,22 +359,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testCreateUserPool {
-    NSString *key = @"testCreateUserPool";
+- (void)testDeleteThing {
+    NSString *key = @"testDeleteThing";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] createUserPool:[AWSCognitoSignInCreateUserPoolRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] deleteThing:[AWSIoTDeleteThingRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -373,22 +382,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testCreateUserPoolClient {
-    NSString *key = @"testCreateUserPoolClient";
+- (void)testDeleteTopicRule {
+    NSString *key = @"testDeleteTopicRule";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] createUserPoolClient:[AWSCognitoSignInCreateUserPoolClientRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] deleteTopicRule:[AWSIoTDeleteTopicRuleRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -396,22 +405,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testDeleteUser {
-    NSString *key = @"testDeleteUser";
+- (void)testDescribeCertificate {
+    NSString *key = @"testDescribeCertificate";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] deleteUser:[AWSCognitoSignInDeleteUserRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] describeCertificate:[AWSIoTDescribeCertificateRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -419,22 +428,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testDeleteUserAttributes {
-    NSString *key = @"testDeleteUserAttributes";
+- (void)testDescribeEndpoint {
+    NSString *key = @"testDescribeEndpoint";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] deleteUserAttributes:[AWSCognitoSignInDeleteUserAttributesRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] describeEndpoint:[AWSIoTDescribeEndpointRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -442,22 +451,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testDeleteUserPool {
-    NSString *key = @"testDeleteUserPool";
+- (void)testDescribeThing {
+    NSString *key = @"testDescribeThing";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] deleteUserPool:[AWSCognitoSignInDeleteUserPoolRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] describeThing:[AWSIoTDescribeThingRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -465,22 +474,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testDeleteUserPoolClient {
-    NSString *key = @"testDeleteUserPoolClient";
+- (void)testDetachPrincipalPolicy {
+    NSString *key = @"testDetachPrincipalPolicy";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] deleteUserPoolClient:[AWSCognitoSignInDeleteUserPoolClientRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] detachPrincipalPolicy:[AWSIoTDetachPrincipalPolicyRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -488,22 +497,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testDescribeUserPool {
-    NSString *key = @"testDescribeUserPool";
+- (void)testDetachThingPrincipal {
+    NSString *key = @"testDetachThingPrincipal";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] describeUserPool:[AWSCognitoSignInDescribeUserPoolRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] detachThingPrincipal:[AWSIoTDetachThingPrincipalRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -511,22 +520,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testDescribeUserPoolClient {
-    NSString *key = @"testDescribeUserPoolClient";
+- (void)testGetLoggingOptions {
+    NSString *key = @"testGetLoggingOptions";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] describeUserPoolClient:[AWSCognitoSignInDescribeUserPoolClientRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] getLoggingOptions:[AWSIoTGetLoggingOptionsRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -534,22 +543,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testEnhanceAuth {
-    NSString *key = @"testEnhanceAuth";
+- (void)testGetPolicy {
+    NSString *key = @"testGetPolicy";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] enhanceAuth:[AWSCognitoSignInEnhanceAuthRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] getPolicy:[AWSIoTGetPolicyRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -557,22 +566,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testForgotPassword {
-    NSString *key = @"testForgotPassword";
+- (void)testGetPolicyVersion {
+    NSString *key = @"testGetPolicyVersion";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] forgotPassword:[AWSCognitoSignInForgotPasswordRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] getPolicyVersion:[AWSIoTGetPolicyVersionRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -580,22 +589,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testGetAuthenticationDetails {
-    NSString *key = @"testGetAuthenticationDetails";
+- (void)testGetTopicRule {
+    NSString *key = @"testGetTopicRule";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] getAuthenticationDetails:[AWSCognitoSignInGetAuthenticationDetailsRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] getTopicRule:[AWSIoTGetTopicRuleRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -603,22 +612,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testGetJwks {
-    NSString *key = @"testGetJwks";
+- (void)testListCertificates {
+    NSString *key = @"testListCertificates";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] getJwks:[AWSCognitoSignInGetJwksRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] listCertificates:[AWSIoTListCertificatesRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -626,22 +635,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testGetOpenIdConfiguration {
-    NSString *key = @"testGetOpenIdConfiguration";
+- (void)testListPolicies {
+    NSString *key = @"testListPolicies";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] getOpenIdConfiguration:[AWSCognitoSignInGetOpenIdConfigurationRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] listPolicies:[AWSIoTListPoliciesRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -649,22 +658,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testGetUser {
-    NSString *key = @"testGetUser";
+- (void)testListPolicyVersions {
+    NSString *key = @"testListPolicyVersions";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] getUser:[AWSCognitoSignInGetUserRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] listPolicyVersions:[AWSIoTListPolicyVersionsRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -672,22 +681,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testGetUserAttributeVerificationCode {
-    NSString *key = @"testGetUserAttributeVerificationCode";
+- (void)testListPrincipalPolicies {
+    NSString *key = @"testListPrincipalPolicies";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] getUserAttributeVerificationCode:[AWSCognitoSignInGetUserAttributeVerificationCodeRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] listPrincipalPolicies:[AWSIoTListPrincipalPoliciesRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -695,22 +704,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testListUserPoolClients {
-    NSString *key = @"testListUserPoolClients";
+- (void)testListPrincipalThings {
+    NSString *key = @"testListPrincipalThings";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] listUserPoolClients:[AWSCognitoSignInListUserPoolClientsRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] listPrincipalThings:[AWSIoTListPrincipalThingsRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -718,22 +727,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testListUserPools {
-    NSString *key = @"testListUserPools";
+- (void)testListThingPrincipals {
+    NSString *key = @"testListThingPrincipals";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] listUserPools:[AWSCognitoSignInListUserPoolsRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] listThingPrincipals:[AWSIoTListThingPrincipalsRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -741,22 +750,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testRefreshTokens {
-    NSString *key = @"testRefreshTokens";
+- (void)testListThings {
+    NSString *key = @"testListThings";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] refreshTokens:[AWSCognitoSignInRefreshTokensRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] listThings:[AWSIoTListThingsRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -764,22 +773,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testResendConfirmationCode {
-    NSString *key = @"testResendConfirmationCode";
+- (void)testListTopicRules {
+    NSString *key = @"testListTopicRules";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] resendConfirmationCode:[AWSCognitoSignInResendConfirmationCodeRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] listTopicRules:[AWSIoTListTopicRulesRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -787,22 +796,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testSignUp {
-    NSString *key = @"testSignUp";
+- (void)testRejectCertificateTransfer {
+    NSString *key = @"testRejectCertificateTransfer";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] signUp:[AWSCognitoSignInSignUpRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] rejectCertificateTransfer:[AWSIoTRejectCertificateTransferRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -810,22 +819,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testUpdateUserAttributes {
-    NSString *key = @"testUpdateUserAttributes";
+- (void)testReplaceTopicRule {
+    NSString *key = @"testReplaceTopicRule";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] updateUserAttributes:[AWSCognitoSignInUpdateUserAttributesRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] replaceTopicRule:[AWSIoTReplaceTopicRuleRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -833,22 +842,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testUpdateUserPool {
-    NSString *key = @"testUpdateUserPool";
+- (void)testSetDefaultPolicyVersion {
+    NSString *key = @"testSetDefaultPolicyVersion";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] updateUserPool:[AWSCognitoSignInUpdateUserPoolRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] setDefaultPolicyVersion:[AWSIoTSetDefaultPolicyVersionRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -856,22 +865,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testUpdateUserPoolClient {
-    NSString *key = @"testUpdateUserPoolClient";
+- (void)testSetLoggingOptions {
+    NSString *key = @"testSetLoggingOptions";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] updateUserPoolClient:[AWSCognitoSignInUpdateUserPoolClientRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] setLoggingOptions:[AWSIoTSetLoggingOptionsRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -879,22 +888,22 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
-
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
-- (void)testVerifyUserAttribute {
-    NSString *key = @"testVerifyUserAttribute";
+- (void)testTransferCertificate {
+    NSString *key = @"testTransferCertificate";
     AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
-    [AWSCognitoSignIn registerCognitoSignInWithConfiguration:configuration forKey:key];
-
-    AWSCognitoSignIn *awsClient = [AWSCognitoSignIn CognitoSignInForKey:key];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
     XCTAssertNotNil(awsClient);
     XCTAssertNotNil(mockNetworking);
     [awsClient setValue:mockNetworking forKey:@"networking"];
-    [[[[AWSCognitoSignIn CognitoSignInForKey:key] verifyUserAttribute:[AWSCognitoSignInVerifyUserAttributeRequest new]] continueWithBlock:^id(AWSTask *task) {
+    [[[[AWSIoT IoTForKey:key] transferCertificate:[AWSIoTTransferCertificateRequest new]] continueWithBlock:^id(AWSTask *task) {
         XCTAssertNotNil(task.error);
         XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
         XCTAssertEqual(8848, task.error.code);
@@ -902,10 +911,56 @@ static id mockNetworking = nil;
         XCTAssertNil(task.result);
         return nil;
     }] waitUntilFinished];
-
+    
     OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
+    
+    [AWSIoT removeIoTForKey:key];
+}
 
-    [AWSCognitoSignIn removeCognitoSignInForKey:key];
+- (void)testUpdateCertificate {
+    NSString *key = @"testUpdateCertificate";
+    AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
+    XCTAssertNotNil(awsClient);
+    XCTAssertNotNil(mockNetworking);
+    [awsClient setValue:mockNetworking forKey:@"networking"];
+    [[[[AWSIoT IoTForKey:key] updateCertificate:[AWSIoTUpdateCertificateRequest new]] continueWithBlock:^id(AWSTask *task) {
+        XCTAssertNotNil(task.error);
+        XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
+        XCTAssertEqual(8848, task.error.code);
+        XCTAssertNil(task.exception);
+        XCTAssertNil(task.result);
+        return nil;
+    }] waitUntilFinished];
+    
+    OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
+    
+    [AWSIoT removeIoTForKey:key];
+}
+
+- (void)testUpdateThing {
+    NSString *key = @"testUpdateThing";
+    AWSServiceConfiguration *configuration = [[AWSServiceConfiguration alloc] initWithRegion:AWSRegionUSEast1 credentialsProvider:nil];
+    [AWSIoT registerIoTWithConfiguration:configuration forKey:key];
+    
+    AWSIoT *awsClient = [AWSIoT IoTForKey:key];
+    XCTAssertNotNil(awsClient);
+    XCTAssertNotNil(mockNetworking);
+    [awsClient setValue:mockNetworking forKey:@"networking"];
+    [[[[AWSIoT IoTForKey:key] updateThing:[AWSIoTUpdateThingRequest new]] continueWithBlock:^id(AWSTask *task) {
+        XCTAssertNotNil(task.error);
+        XCTAssertEqualObjects(@"OCMockExpectedNetworkingError", task.error.domain);
+        XCTAssertEqual(8848, task.error.code);
+        XCTAssertNil(task.exception);
+        XCTAssertNil(task.result);
+        return nil;
+    }] waitUntilFinished];
+    
+    OCMVerify([mockNetworking sendRequest:[OCMArg isNotNil]]);
+    
+    [AWSIoT removeIoTForKey:key];
 }
 
 @end

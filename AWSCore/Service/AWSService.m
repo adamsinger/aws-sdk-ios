@@ -20,7 +20,7 @@
 #import "AWSLogging.h"
 #import "AWSCategory.h"
 
-NSString *const AWSiOSSDKVersion = @"2.4.2";
+NSString *const AWSiOSSDKVersion = @"2.4.11";
 NSString *const AWSServiceErrorDomain = @"com.amazonaws.AWSServiceErrorDomain";
 
 static NSString *const AWSServiceConfigurationUnknown = @"Unknown";
@@ -126,6 +126,16 @@ static NSString *const AWSServiceConfigurationUnknown = @"Unknown";
   return self;
 }
 
+- (instancetype)initWithRegion:(AWSRegionType)regionType
+                      endpoint:(AWSEndpoint *)endpoint
+           credentialsProvider:(id<AWSCredentialsProvider>)credentialsProvider{
+    if(self = [self initWithRegion:regionType credentialsProvider:credentialsProvider]){
+        _endpoint = endpoint;
+    }
+    
+    return self;
+}
+
 + (NSString *)baseUserAgent {
   static NSString *_userAgent = nil;
   static dispatch_once_t onceToken;
@@ -192,12 +202,13 @@ static NSMutableArray *_globalUserAgentPrefixes = nil;
 }
 
 - (id)copyWithZone:(NSZone *)zone {
-  AWSServiceConfiguration *configuration = [super copyWithZone:zone];
-  configuration.regionType = self.regionType;
-  configuration.credentialsProvider = self.credentialsProvider;
-  configuration.userAgentProductTokens = self.userAgentProductTokens;
-
-  return configuration;
+    AWSServiceConfiguration *configuration = [super copyWithZone:zone];
+    configuration.regionType = self.regionType;
+    configuration.credentialsProvider = self.credentialsProvider;
+    configuration.userAgentProductTokens = self.userAgentProductTokens;
+    configuration.endpoint = self.endpoint;
+    
+    return configuration;
 }
 
 @end
@@ -205,6 +216,7 @@ static NSMutableArray *_globalUserAgentPrefixes = nil;
 #pragma mark - AWSEndpoint
 
 static NSString *const AWSRegionNameUSEast1 = @"us-east-1";
+static NSString *const AWSRegionNameUSEast2 = @"us-east-2";
 static NSString *const AWSRegionNameUSWest2 = @"us-west-2";
 static NSString *const AWSRegionNameUSWest1 = @"us-west-1";
 static NSString *const AWSRegionNameEUWest1 = @"eu-west-1";
@@ -213,6 +225,7 @@ static NSString *const AWSRegionNameAPSoutheast1 = @"ap-southeast-1";
 static NSString *const AWSRegionNameAPNortheast1 = @"ap-northeast-1";
 static NSString *const AWSRegionNameAPNortheast2 = @"ap-northeast-2";
 static NSString *const AWSRegionNameAPSoutheast2 = @"ap-southeast-2";
+static NSString *const AWSRegionNameAPSouth1 = @"ap-south-1";
 static NSString *const AWSRegionNameSAEast1 = @"sa-east-1";
 static NSString *const AWSRegionNameCNNorth1 = @"cn-north-1";
 static NSString *const AWSRegionNameUSGovWest1 = @"us-gov-west-1";
@@ -239,6 +252,13 @@ static NSString *const AWSServiceNameSimpleDB = @"sdb";
 static NSString *const AWSServiceNameSNS = @"sns";
 static NSString *const AWSServiceNameSQS = @"sqs";
 static NSString *const AWSServiceNameSTS = @"sts";
+
+@interface AWSEndpoint()
+
+- (void) setRegion:(AWSRegionType)regionType service:(AWSServiceType)serviceType;
+
+@end
+
 
 @implementation AWSEndpoint
 
@@ -294,35 +314,63 @@ static NSString *const AWSServiceNameSTS = @"sts";
   return self;
 }
 
+- (instancetype)initWithURL:(NSURL *)URL{
+    if (self = [super init]) {
+        _URL = URL;
+        _hostName = [_URL host];
+        if ([[_URL scheme].lowercaseString isEqualToString:@"https"]) {
+            _useUnsafeURL = NO;
+        }else{
+            _useUnsafeURL = YES;
+        }
+    }
+    return self;
+}
+
+- (instancetype)initWithURLString:(NSString *)URLString{
+    return [self initWithURL:[[NSURL alloc] initWithString:URLString]];
+}
+
+- (void) setRegion:(AWSRegionType)regionType service:(AWSServiceType)serviceType{
+    _regionType = regionType;
+    _serviceType = serviceType;
+    _regionName = [self regionNameFromType:regionType];
+    _serviceName = [self serviceNameFromType:serviceType];
+}
+
 - (NSString *)regionNameFromType:(AWSRegionType)regionType {
-  switch (regionType) {
-    case AWSRegionUSEast1:
-      return AWSRegionNameUSEast1;
-    case AWSRegionUSWest2:
-      return AWSRegionNameUSWest2;
-    case AWSRegionUSWest1:
-      return AWSRegionNameUSWest1;
-    case AWSRegionEUWest1:
-      return AWSRegionNameEUWest1;
-    case AWSRegionEUCentral1:
-      return AWSRegionNameEUCentral1;
-    case AWSRegionAPSoutheast1:
-      return AWSRegionNameAPSoutheast1;
-    case AWSRegionAPSoutheast2:
-      return AWSRegionNameAPSoutheast2;
-    case AWSRegionAPNortheast1:
-      return AWSRegionNameAPNortheast1;
-    case AWSRegionAPNortheast2:
-      return AWSRegionNameAPNortheast2;
-    case AWSRegionSAEast1:
-      return AWSRegionNameSAEast1;
-    case AWSRegionCNNorth1:
-      return AWSRegionNameCNNorth1;
-    case AWSRegionUSGovWest1:
-      return AWSRegionNameUSGovWest1;
-    default:
-      return nil;
-  }
+    switch (regionType) {
+        case AWSRegionUSEast1:
+            return AWSRegionNameUSEast1;
+        case AWSRegionUSEast2:
+            return AWSRegionNameUSEast2;
+        case AWSRegionUSWest2:
+            return AWSRegionNameUSWest2;
+        case AWSRegionUSWest1:
+            return AWSRegionNameUSWest1;
+        case AWSRegionEUWest1:
+            return AWSRegionNameEUWest1;
+        case AWSRegionEUCentral1:
+            return AWSRegionNameEUCentral1;
+        case AWSRegionAPSoutheast1:
+            return AWSRegionNameAPSoutheast1;
+        case AWSRegionAPSoutheast2:
+            return AWSRegionNameAPSoutheast2;
+        case AWSRegionAPNortheast1:
+            return AWSRegionNameAPNortheast1;
+        case AWSRegionAPNortheast2:
+            return AWSRegionNameAPNortheast2;
+        case AWSRegionAPSouth1:
+            return AWSRegionNameAPSouth1;
+        case AWSRegionSAEast1:
+            return AWSRegionNameSAEast1;
+        case AWSRegionCNNorth1:
+            return AWSRegionNameCNNorth1;
+        case AWSRegionUSGovWest1:
+            return AWSRegionNameUSGovWest1;
+        default:
+            return nil;
+    }
 }
 
 - (NSString *)serviceNameFromType:(AWSServiceType)serviceType {
@@ -381,55 +429,63 @@ static NSString *const AWSServiceNameSTS = @"sts";
                  service:(AWSServiceType)serviceType
              serviceName:(NSString *)serviceName
             useUnsafeURL:(BOOL)useUnsafeURL {
-  NSURL *URL = nil;
 
-  NSString *separator = @".";
-  if (serviceType == AWSServiceS3
-      && (regionType == AWSRegionUSEast1
-          || regionType == AWSRegionUSWest1
-          || regionType == AWSRegionUSWest2
-          || regionType == AWSRegionEUWest1
-          || regionType == AWSRegionAPSoutheast1
-          || regionType == AWSRegionAPNortheast1
-          || regionType == AWSRegionAPNortheast2
-          || regionType == AWSRegionAPSoutheast2
-          || regionType == AWSRegionSAEast1
-          || regionType == AWSRegionUSGovWest1)) {
-        separator = @"-";
-      }
+    NSURL *URL = nil;
 
-  NSString *HTTPType = @"https";
-  if (useUnsafeURL) {
-    HTTPType = @"http";
-  }
+    NSString *separator = @".";
+    if (serviceType == AWSServiceS3
+        && (regionType == AWSRegionUSEast1
+            || regionType == AWSRegionUSWest1
+            || regionType == AWSRegionUSWest2
+            || regionType == AWSRegionEUWest1
+            || regionType == AWSRegionAPSoutheast1
+            || regionType == AWSRegionAPNortheast1
+            || regionType == AWSRegionAPNortheast2
+            || regionType == AWSRegionAPSoutheast2
+            || regionType == AWSRegionAPSouth1
+            || regionType == AWSRegionSAEast1
+            || regionType == AWSRegionUSGovWest1)) {
+            separator = @"-";
+        }
 
-  if (serviceType == AWSServiceS3 && regionType == AWSRegionUSEast1) {
-    URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://s3.amazonaws.com", HTTPType]];
-  } else if (serviceType == AWSServiceSTS) {
-    if (regionType == AWSRegionCNNorth1) {
-      URL = [NSURL URLWithString:@"https://sts.cn-north-1.amazonaws.com"];
-    } else if (regionType == AWSRegionUSGovWest1) {
-      URL = [NSURL URLWithString:@"https://sts.us-gov-west-1.amazonaws.com"];
-    } else {
-      URL = [NSURL URLWithString:@"https://sts.amazonaws.com"];
+    NSString *HTTPType = @"https";
+    if (useUnsafeURL) {
+        HTTPType = @"http";
     }
-  } else if (serviceType == AWSServiceSimpleDB && regionType == AWSRegionUSEast1) {
-    URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://sdb.amazonaws.com", HTTPType]];
-  } else if (serviceType == AWSServiceIoT) {
-    URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://iot%@%@.amazonaws.com", HTTPType, separator, regionName]];
-  } else if (serviceType == AWSServiceIoTData) {
-    URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://data%@iot%@%@.amazonaws.com", HTTPType, separator, separator, regionName]];
-  } else {
-    URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://%@%@%@.amazonaws.com", HTTPType, serviceName, separator, regionName]];
-  }
 
-  //need to add ".cn" at end of URL if it is in China Region
-  if ([regionName hasPrefix:@"cn"]) {
+    if (serviceType == AWSServiceS3 && regionType == AWSRegionUSEast1) {
+        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://s3.amazonaws.com", HTTPType]];
+    } else if (serviceType == AWSServiceSTS) {
+        if (regionType == AWSRegionCNNorth1) {
+            URL = [NSURL URLWithString:@"https://sts.cn-north-1.amazonaws.com"];
+        } else if (regionType == AWSRegionUSGovWest1) {
+            URL = [NSURL URLWithString:@"https://sts.us-gov-west-1.amazonaws.com"];
+        } else {
+            URL = [NSURL URLWithString:@"https://sts.amazonaws.com"];
+        }
+    } else if (serviceType == AWSServiceSimpleDB && regionType == AWSRegionUSEast1) {
+        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://sdb.amazonaws.com", HTTPType]];
+    } else if (serviceType == AWSServiceIoT) {
+        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://iot%@%@.amazonaws.com", HTTPType, separator, regionName]];
+    } else if (serviceType == AWSServiceIoTData) {
+        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://data%@iot%@%@.amazonaws.com", HTTPType, separator, separator, regionName]];
+    } else if (serviceType == AWSServiceSimpleDB && regionType == AWSRegionUSEast1) {
+        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://sdb.amazonaws.com", HTTPType]];
+    } else if (serviceType == AWSServiceIoT) {
+        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://iot%@%@.amazonaws.com", HTTPType, separator, regionName]];
+    } else if (serviceType == AWSServiceIoTData) {
+        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://data%@iot%@%@.amazonaws.com", HTTPType, separator, separator, regionName]];
+    } else {
+        URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://%@%@%@.amazonaws.com", HTTPType, serviceName, separator, regionName]];
+    }
+
+    //need to add ".cn" at end of URL if it is in China Region
+    if ([regionName hasPrefix:@"cn"]) {
     NSString *urlString = [URL absoluteString];
     URL = [NSURL URLWithString:[urlString stringByAppendingString:@".cn"]];
-  }
+    }
 
-  return URL;
+    return URL;
 }
 
 @end

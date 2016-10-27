@@ -142,11 +142,6 @@ NSString *const AWSSignatureV4Terminator = @"aws4_request";
 }
 
 - (AWSTask *)interceptRequest:(NSMutableURLRequest *)request {
-    NSString *absoluteString = [request.URL absoluteString];
-    if ([absoluteString hasSuffix:@"/"]) {
-        request.URL = [NSURL URLWithString:[absoluteString substringToIndex:[absoluteString length] - 1]];
-    }
-
     [request addValue:request.URL.host forHTTPHeaderField:@"Host"];
     return [[self.credentialsProvider credentials] continueWithSuccessBlock:^id _Nullable(AWSTask<AWSCredentials *> * _Nonnull task) {
         AWSCredentials *credentials = task.result;
@@ -154,21 +149,21 @@ NSString *const AWSSignatureV4Terminator = @"aws4_request";
         [request setValue:nil forHTTPHeaderField:@"Authorization"];
 
         if (credentials) {
-            NSString *autorization;
+            NSString *authorization;
             NSArray *hostArray  = [[[request URL] host] componentsSeparatedByString:@"."];
 
             [request setValue:credentials.sessionKey forHTTPHeaderField:@"X-Amz-Security-Token"];
             if ([hostArray firstObject] && [[hostArray firstObject] rangeOfString:@"s3"].location != NSNotFound) {
                 //If it is a S3 Request
-                autorization = [self signS3RequestV4:request
+                authorization = [self signS3RequestV4:request
                                          credentials:credentials];
             } else {
-                autorization = [self signRequestV4:request
+                authorization = [self signRequestV4:request
                                        credentials:credentials];
             }
 
-            if (autorization) {
-                [request setValue:autorization forHTTPHeaderField:@"Authorization"];
+            if (authorization) {
+                [request setValue:authorization forHTTPHeaderField:@"Authorization"];
             }
         }
         return nil;
@@ -297,8 +292,14 @@ NSString *const AWSSignatureV4Terminator = @"aws4_request";
 }
 
 
-- (NSString *)signRequestV4:(NSURLRequest *)request
+- (NSString *)signRequestV4:(NSMutableURLRequest *)request
                 credentials:(AWSCredentials *)credentials {
+    
+    NSString *absoluteString = [request.URL absoluteString];
+    if ([absoluteString hasSuffix:@"/"]) {
+        request.URL = [NSURL URLWithString:[absoluteString substringToIndex:[absoluteString length] - 1]];
+    }
+    
     NSDate *xAmzDate = [NSDate aws_dateFromString:[request valueForHTTPHeaderField:@"X-Amz-Date"]
                                           format:AWSDateISO8601DateFormat2];
 
@@ -576,8 +577,6 @@ static NSString *const emptyStringSha256 = @"e3b0c44298fc1c149afbf4c8996fb92427a
 
 @interface AWSS3ChunkedEncodingInputStream()
 
-@property (nonatomic, weak) id<NSStreamDelegate> delegate;
-
 // original input stream
 @property (nonatomic, strong) NSInputStream *stream;
 
@@ -740,9 +739,9 @@ static NSString *const emptyStringSha256 = @"e3b0c44298fc1c149afbf4c8996fb92427a
 	[self.stream close];
 }
 
-- (void)setDelegate:(id)delegate {
+- (void)setDelegate:(id<NSStreamDelegate>)delegate {
     if (delegate == nil) {
-        _delegate = nil;
+        _delegate = self;
     } else {
         _delegate = delegate;
     }

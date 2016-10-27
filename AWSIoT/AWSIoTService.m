@@ -26,7 +26,8 @@
 #import "AWSIoTResources.h"
 
 static NSString *const AWSInfoIoT = @"IoT";
-static NSString *const AWSIoTSDKVersion = @"2.4.2";
+static NSString *const AWSIoTSDKVersion = @"2.4.11";
+
 
 @interface AWSIoTResponseSerializer : AWSJSONResponseSerializer
 
@@ -74,13 +75,13 @@ static NSDictionary *errorCodeDictionary = nil;
                                                     data:data
                                                    error:error];
     if (!*error && [responseObject isKindOfClass:[NSDictionary class]]) {
-        NSString *errorTypeStr = [[response allHeaderFields] objectForKey:@"x-amzn-ErrorType"];
-        NSString *errorTypeHeader = [[errorTypeStr componentsSeparatedByString:@":"] firstObject];
+    	NSString *errorTypeString = [[response allHeaderFields] objectForKey:@"x-amzn-ErrorType"];
+        NSString *errorTypeHeader = [[errorTypeString componentsSeparatedByString:@":"] firstObject];
 
-        if ([errorTypeStr length] > 0 && errorTypeHeader) {
+        if ([errorTypeString length] > 0 && errorTypeHeader) {
             if (errorCodeDictionary[errorTypeHeader]) {
                 if (error) {
-                    NSDictionary *userInfo = @{NSLocalizedDescriptionKey : [responseObject objectForKey:@"message"]?[responseObject objectForKey:@"message"]:[NSNull null], NSLocalizedFailureReasonErrorKey: errorTypeStr};
+                    NSDictionary *userInfo = @{NSLocalizedDescriptionKey : [responseObject objectForKey:@"message"]?[responseObject objectForKey:@"message"]:[NSNull null], NSLocalizedFailureReasonErrorKey: errorTypeString};
                     *error = [NSError errorWithDomain:AWSIoTErrorDomain
                                                  code:[[errorCodeDictionary objectForKey:errorTypeHeader] integerValue]
                                              userInfo:userInfo];
@@ -88,7 +89,7 @@ static NSDictionary *errorCodeDictionary = nil;
                 return responseObject;
             } else if (errorTypeHeader) {
                 if (error) {
-                    NSDictionary *userInfo = @{NSLocalizedDescriptionKey : [responseObject objectForKey:@"message"]?[responseObject objectForKey:@"message"]:[NSNull null], NSLocalizedFailureReasonErrorKey: errorTypeStr};
+                    NSDictionary *userInfo = @{NSLocalizedDescriptionKey : [responseObject objectForKey:@"message"]?[responseObject objectForKey:@"message"]:[NSNull null], NSLocalizedFailureReasonErrorKey: errorTypeString};
                     *error = [NSError errorWithDomain:AWSIoTErrorDomain
                                                  code:AWSIoTErrorUnknown
                                              userInfo:userInfo];
@@ -111,8 +112,7 @@ static NSDictionary *errorCodeDictionary = nil;
                                                        error:error];
         }
     }
-
-    return responseObject;
+	    return responseObject;
 }
 
 @end
@@ -135,13 +135,18 @@ static NSDictionary *errorCodeDictionary = nil;
 
 @property (nonatomic, strong) AWSNetworking *networking;
 @property (nonatomic, strong) AWSServiceConfiguration *configuration;
-@property (nonatomic, strong) AWSEndpoint *endpoint;
 
 @end
 
 @interface AWSServiceConfiguration()
 
 @property (nonatomic, strong) AWSEndpoint *endpoint;
+
+@end
+
+@interface AWSEndpoint()
+
+- (void) setRegion:(AWSRegionType)regionType service:(AWSServiceType)serviceType;
 
 @end
 
@@ -209,7 +214,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
             AWSServiceConfiguration *serviceConfiguration = [[AWSServiceConfiguration alloc] initWithRegion:serviceInfo.region
                                                                                         credentialsProvider:serviceInfo.cognitoCredentialsProvider];
             [AWSIoT registerIoTWithConfiguration:serviceConfiguration
-                                          forKey:key];
+                                                                forKey:key];
         }
 
         return [_serviceClients objectForKey:key];
@@ -232,56 +237,59 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 - (instancetype)initWithConfiguration:(AWSServiceConfiguration *)configuration {
     if (self = [super init]) {
         _configuration = [configuration copy];
-
-        _configuration.endpoint = [[AWSEndpoint alloc] initWithRegion:_configuration.regionType
-                                                service:AWSServiceIoT
-                                           useUnsafeURL:NO];
-
+       	
+        if(!configuration.endpoint){
+            _configuration.endpoint = [[AWSEndpoint alloc] initWithRegion:_configuration.regionType
+                                                              service:AWSServiceIoT
+                                                         useUnsafeURL:NO];
+        }else{
+            [_configuration.endpoint setRegion:_configuration.regionType
+                                      service:AWSServiceIoT];
+        }
+       	
         AWSSignatureV4Signer *signer = [[AWSSignatureV4Signer alloc] initWithCredentialsProvider:_configuration.credentialsProvider
                                                                                         endpoint:_configuration.endpoint];
-        
         AWSNetworkingRequestInterceptor *baseInterceptor = [[AWSNetworkingRequestInterceptor alloc] initWithUserAgent:_configuration.userAgent];
         _configuration.requestInterceptors = @[baseInterceptor, signer];
-        
-        _configuration.baseURL = _configuration.endpoint.URL;
-        _configuration.requestSerializer = [AWSJSONRequestSerializer new];
-        _configuration.retryHandler = [[AWSIoTRequestRetryHandler alloc] initWithMaximumRetryCount:_configuration.maxRetryCount];
-        _configuration.headers = @{@"Content-Type" : @"application/x-amz-json-1.0"};
 
+        _configuration.baseURL = _configuration.endpoint.URL;
+        _configuration.retryHandler = [[AWSIoTRequestRetryHandler alloc] initWithMaximumRetryCount:_configuration.maxRetryCount];
+        _configuration.headers = @{@"Content-Type" : @"application/x-amz-json-1.0"}; 
+		
         _networking = [[AWSNetworking alloc] initWithConfiguration:_configuration];
     }
-
+    
     return self;
 }
 
 - (AWSTask *)invokeRequest:(AWSRequest *)request
-                HTTPMethod:(AWSHTTPMethod)HTTPMethod
-                 URLString:(NSString *) URLString
-              targetPrefix:(NSString *)targetPrefix
-             operationName:(NSString *)operationName
-               outputClass:(Class)outputClass {
-    if (!request) {
-        request = [AWSRequest new];
+               HTTPMethod:(AWSHTTPMethod)HTTPMethod
+                URLString:(NSString *) URLString
+             targetPrefix:(NSString *)targetPrefix
+            operationName:(NSString *)operationName
+              outputClass:(Class)outputClass {
+    
+    @autoreleasepool {
+        if (!request) {
+            request = [AWSRequest new];
+        }
+
+        AWSNetworkingRequest *networkingRequest = request.internalRequest;
+        if (request) {
+            networkingRequest.parameters = [[AWSMTLJSONAdapter JSONDictionaryFromModel:request] aws_removeNullValues];
+        } else {
+            networkingRequest.parameters = @{};
+        }
+
+        networkingRequest.HTTPMethod = HTTPMethod;
+        networkingRequest.requestSerializer = [[AWSJSONRequestSerializer alloc] initWithJSONDefinition:[[AWSIoTResources sharedInstance] JSONObject]
+                                                                                                   actionName:operationName];
+        networkingRequest.responseSerializer = [[AWSIoTResponseSerializer alloc] initWithJSONDefinition:[[AWSIoTResources sharedInstance] JSONObject]
+                                                                                             actionName:operationName
+                                                                                            outputClass:outputClass];
+        
+        return [self.networking sendRequest:networkingRequest];
     }
-
-    AWSNetworkingRequest *networkingRequest = request.internalRequest;
-    if (request) {
-        networkingRequest.parameters = [[AWSMTLJSONAdapter JSONDictionaryFromModel:request] aws_removeNullValues];
-    } else {
-        networkingRequest.parameters = @{};
-    }
-
-
-    NSMutableDictionary *headers = [NSMutableDictionary new];
-
-    networkingRequest.headers = headers;
-    networkingRequest.HTTPMethod = HTTPMethod;
-    networkingRequest.requestSerializer = [[AWSJSONRequestSerializer alloc] initWithJSONDefinition:[[AWSIoTResources sharedInstance] JSONObject]
-                                                                                        actionName:operationName];
-    networkingRequest.responseSerializer = [[AWSIoTResponseSerializer alloc] initWithJSONDefinition:[[AWSIoTResources sharedInstance] JSONObject]
-                                                                                                 actionName:operationName
-                                                                                                outputClass:outputClass];
-    return [self.networking sendRequest:networkingRequest];
 }
 
 #pragma mark - Service method
@@ -296,7 +304,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)acceptCertificateTransfer:(AWSIoTAcceptCertificateTransferRequest *)request
-                completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self acceptCertificateTransfer:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -323,7 +331,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)attachPrincipalPolicy:(AWSIoTAttachPrincipalPolicyRequest *)request
-            completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self attachPrincipalPolicy:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -350,7 +358,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)attachThingPrincipal:(AWSIoTAttachThingPrincipalRequest *)request
-           completionHandler:(void (^)(AWSIoTAttachThingPrincipalResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTAttachThingPrincipalResponse *response, NSError *error))completionHandler {
     [[self attachThingPrincipal:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTAttachThingPrincipalResponse *> * _Nonnull task) {
         AWSIoTAttachThingPrincipalResponse *result = task.result;
         NSError *error = task.error;
@@ -378,7 +386,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)cancelCertificateTransfer:(AWSIoTCancelCertificateTransferRequest *)request
-                completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self cancelCertificateTransfer:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -405,7 +413,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)createCertificateFromCsr:(AWSIoTCreateCertificateFromCsrRequest *)request
-               completionHandler:(void (^)(AWSIoTCreateCertificateFromCsrResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTCreateCertificateFromCsrResponse *response, NSError *error))completionHandler {
     [[self createCertificateFromCsr:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTCreateCertificateFromCsrResponse *> * _Nonnull task) {
         AWSIoTCreateCertificateFromCsrResponse *result = task.result;
         NSError *error = task.error;
@@ -433,7 +441,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)createKeysAndCertificate:(AWSIoTCreateKeysAndCertificateRequest *)request
-               completionHandler:(void (^)(AWSIoTCreateKeysAndCertificateResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTCreateKeysAndCertificateResponse *response, NSError *error))completionHandler {
     [[self createKeysAndCertificate:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTCreateKeysAndCertificateResponse *> * _Nonnull task) {
         AWSIoTCreateKeysAndCertificateResponse *result = task.result;
         NSError *error = task.error;
@@ -461,7 +469,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)createPolicy:(AWSIoTCreatePolicyRequest *)request
-   completionHandler:(void (^)(AWSIoTCreatePolicyResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTCreatePolicyResponse *response, NSError *error))completionHandler {
     [[self createPolicy:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTCreatePolicyResponse *> * _Nonnull task) {
         AWSIoTCreatePolicyResponse *result = task.result;
         NSError *error = task.error;
@@ -489,7 +497,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)createPolicyVersion:(AWSIoTCreatePolicyVersionRequest *)request
-          completionHandler:(void (^)(AWSIoTCreatePolicyVersionResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTCreatePolicyVersionResponse *response, NSError *error))completionHandler {
     [[self createPolicyVersion:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTCreatePolicyVersionResponse *> * _Nonnull task) {
         AWSIoTCreatePolicyVersionResponse *result = task.result;
         NSError *error = task.error;
@@ -517,7 +525,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)createThing:(AWSIoTCreateThingRequest *)request
-  completionHandler:(void (^)(AWSIoTCreateThingResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTCreateThingResponse *response, NSError *error))completionHandler {
     [[self createThing:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTCreateThingResponse *> * _Nonnull task) {
         AWSIoTCreateThingResponse *result = task.result;
         NSError *error = task.error;
@@ -545,7 +553,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)createTopicRule:(AWSIoTCreateTopicRuleRequest *)request
-      completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self createTopicRule:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -572,7 +580,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)deleteCACertificate:(AWSIoTDeleteCACertificateRequest *)request
-          completionHandler:(void (^)(AWSIoTDeleteCACertificateResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTDeleteCACertificateResponse *response, NSError *error))completionHandler {
     [[self deleteCACertificate:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTDeleteCACertificateResponse *> * _Nonnull task) {
         AWSIoTDeleteCACertificateResponse *result = task.result;
         NSError *error = task.error;
@@ -600,7 +608,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)deleteCertificate:(AWSIoTDeleteCertificateRequest *)request
-        completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self deleteCertificate:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -627,7 +635,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)deletePolicy:(AWSIoTDeletePolicyRequest *)request
-   completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self deletePolicy:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -654,7 +662,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)deletePolicyVersion:(AWSIoTDeletePolicyVersionRequest *)request
-          completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self deletePolicyVersion:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -681,7 +689,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)deleteRegistrationCode:(AWSIoTDeleteRegistrationCodeRequest *)request
-             completionHandler:(void (^)(AWSIoTDeleteRegistrationCodeResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTDeleteRegistrationCodeResponse *response, NSError *error))completionHandler {
     [[self deleteRegistrationCode:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTDeleteRegistrationCodeResponse *> * _Nonnull task) {
         AWSIoTDeleteRegistrationCodeResponse *result = task.result;
         NSError *error = task.error;
@@ -709,7 +717,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)deleteThing:(AWSIoTDeleteThingRequest *)request
-  completionHandler:(void (^)(AWSIoTDeleteThingResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTDeleteThingResponse *response, NSError *error))completionHandler {
     [[self deleteThing:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTDeleteThingResponse *> * _Nonnull task) {
         AWSIoTDeleteThingResponse *result = task.result;
         NSError *error = task.error;
@@ -737,7 +745,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)deleteTopicRule:(AWSIoTDeleteTopicRuleRequest *)request
-      completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self deleteTopicRule:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -764,7 +772,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)describeCACertificate:(AWSIoTDescribeCACertificateRequest *)request
-            completionHandler:(void (^)(AWSIoTDescribeCACertificateResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTDescribeCACertificateResponse *response, NSError *error))completionHandler {
     [[self describeCACertificate:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTDescribeCACertificateResponse *> * _Nonnull task) {
         AWSIoTDescribeCACertificateResponse *result = task.result;
         NSError *error = task.error;
@@ -792,7 +800,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)describeCertificate:(AWSIoTDescribeCertificateRequest *)request
-          completionHandler:(void (^)(AWSIoTDescribeCertificateResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTDescribeCertificateResponse *response, NSError *error))completionHandler {
     [[self describeCertificate:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTDescribeCertificateResponse *> * _Nonnull task) {
         AWSIoTDescribeCertificateResponse *result = task.result;
         NSError *error = task.error;
@@ -820,7 +828,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)describeEndpoint:(AWSIoTDescribeEndpointRequest *)request
-       completionHandler:(void (^)(AWSIoTDescribeEndpointResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTDescribeEndpointResponse *response, NSError *error))completionHandler {
     [[self describeEndpoint:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTDescribeEndpointResponse *> * _Nonnull task) {
         AWSIoTDescribeEndpointResponse *result = task.result;
         NSError *error = task.error;
@@ -848,7 +856,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)describeThing:(AWSIoTDescribeThingRequest *)request
-    completionHandler:(void (^)(AWSIoTDescribeThingResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTDescribeThingResponse *response, NSError *error))completionHandler {
     [[self describeThing:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTDescribeThingResponse *> * _Nonnull task) {
         AWSIoTDescribeThingResponse *result = task.result;
         NSError *error = task.error;
@@ -876,7 +884,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)detachPrincipalPolicy:(AWSIoTDetachPrincipalPolicyRequest *)request
-            completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self detachPrincipalPolicy:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -903,7 +911,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)detachThingPrincipal:(AWSIoTDetachThingPrincipalRequest *)request
-           completionHandler:(void (^)(AWSIoTDetachThingPrincipalResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTDetachThingPrincipalResponse *response, NSError *error))completionHandler {
     [[self detachThingPrincipal:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTDetachThingPrincipalResponse *> * _Nonnull task) {
         AWSIoTDetachThingPrincipalResponse *result = task.result;
         NSError *error = task.error;
@@ -931,7 +939,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)disableTopicRule:(AWSIoTDisableTopicRuleRequest *)request
-       completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self disableTopicRule:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -958,7 +966,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)enableTopicRule:(AWSIoTEnableTopicRuleRequest *)request
-      completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self enableTopicRule:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -985,7 +993,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)getLoggingOptions:(AWSIoTGetLoggingOptionsRequest *)request
-        completionHandler:(void (^)(AWSIoTGetLoggingOptionsResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTGetLoggingOptionsResponse *response, NSError *error))completionHandler {
     [[self getLoggingOptions:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTGetLoggingOptionsResponse *> * _Nonnull task) {
         AWSIoTGetLoggingOptionsResponse *result = task.result;
         NSError *error = task.error;
@@ -1013,7 +1021,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 }
 
 - (void)getPolicy:(AWSIoTGetPolicyRequest *)request
-completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))completionHandler {
     [[self getPolicy:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTGetPolicyResponse *> * _Nonnull task) {
         AWSIoTGetPolicyResponse *result = task.result;
         NSError *error = task.error;
@@ -1041,7 +1049,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)getPolicyVersion:(AWSIoTGetPolicyVersionRequest *)request
-       completionHandler:(void (^)(AWSIoTGetPolicyVersionResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTGetPolicyVersionResponse *response, NSError *error))completionHandler {
     [[self getPolicyVersion:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTGetPolicyVersionResponse *> * _Nonnull task) {
         AWSIoTGetPolicyVersionResponse *result = task.result;
         NSError *error = task.error;
@@ -1069,7 +1077,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)getRegistrationCode:(AWSIoTGetRegistrationCodeRequest *)request
-          completionHandler:(void (^)(AWSIoTGetRegistrationCodeResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTGetRegistrationCodeResponse *response, NSError *error))completionHandler {
     [[self getRegistrationCode:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTGetRegistrationCodeResponse *> * _Nonnull task) {
         AWSIoTGetRegistrationCodeResponse *result = task.result;
         NSError *error = task.error;
@@ -1097,7 +1105,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)getTopicRule:(AWSIoTGetTopicRuleRequest *)request
-   completionHandler:(void (^)(AWSIoTGetTopicRuleResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTGetTopicRuleResponse *response, NSError *error))completionHandler {
     [[self getTopicRule:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTGetTopicRuleResponse *> * _Nonnull task) {
         AWSIoTGetTopicRuleResponse *result = task.result;
         NSError *error = task.error;
@@ -1125,7 +1133,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)listCACertificates:(AWSIoTListCACertificatesRequest *)request
-         completionHandler:(void (^)(AWSIoTListCACertificatesResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTListCACertificatesResponse *response, NSError *error))completionHandler {
     [[self listCACertificates:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTListCACertificatesResponse *> * _Nonnull task) {
         AWSIoTListCACertificatesResponse *result = task.result;
         NSError *error = task.error;
@@ -1153,7 +1161,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)listCertificates:(AWSIoTListCertificatesRequest *)request
-       completionHandler:(void (^)(AWSIoTListCertificatesResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTListCertificatesResponse *response, NSError *error))completionHandler {
     [[self listCertificates:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTListCertificatesResponse *> * _Nonnull task) {
         AWSIoTListCertificatesResponse *result = task.result;
         NSError *error = task.error;
@@ -1181,7 +1189,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)listCertificatesByCA:(AWSIoTListCertificatesByCARequest *)request
-           completionHandler:(void (^)(AWSIoTListCertificatesByCAResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTListCertificatesByCAResponse *response, NSError *error))completionHandler {
     [[self listCertificatesByCA:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTListCertificatesByCAResponse *> * _Nonnull task) {
         AWSIoTListCertificatesByCAResponse *result = task.result;
         NSError *error = task.error;
@@ -1209,7 +1217,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)listPolicies:(AWSIoTListPoliciesRequest *)request
-   completionHandler:(void (^)(AWSIoTListPoliciesResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTListPoliciesResponse *response, NSError *error))completionHandler {
     [[self listPolicies:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTListPoliciesResponse *> * _Nonnull task) {
         AWSIoTListPoliciesResponse *result = task.result;
         NSError *error = task.error;
@@ -1237,7 +1245,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)listPolicyVersions:(AWSIoTListPolicyVersionsRequest *)request
-         completionHandler:(void (^)(AWSIoTListPolicyVersionsResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTListPolicyVersionsResponse *response, NSError *error))completionHandler {
     [[self listPolicyVersions:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTListPolicyVersionsResponse *> * _Nonnull task) {
         AWSIoTListPolicyVersionsResponse *result = task.result;
         NSError *error = task.error;
@@ -1265,7 +1273,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)listPrincipalPolicies:(AWSIoTListPrincipalPoliciesRequest *)request
-            completionHandler:(void (^)(AWSIoTListPrincipalPoliciesResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTListPrincipalPoliciesResponse *response, NSError *error))completionHandler {
     [[self listPrincipalPolicies:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTListPrincipalPoliciesResponse *> * _Nonnull task) {
         AWSIoTListPrincipalPoliciesResponse *result = task.result;
         NSError *error = task.error;
@@ -1293,7 +1301,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)listPrincipalThings:(AWSIoTListPrincipalThingsRequest *)request
-          completionHandler:(void (^)(AWSIoTListPrincipalThingsResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTListPrincipalThingsResponse *response, NSError *error))completionHandler {
     [[self listPrincipalThings:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTListPrincipalThingsResponse *> * _Nonnull task) {
         AWSIoTListPrincipalThingsResponse *result = task.result;
         NSError *error = task.error;
@@ -1321,7 +1329,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)listThingPrincipals:(AWSIoTListThingPrincipalsRequest *)request
-          completionHandler:(void (^)(AWSIoTListThingPrincipalsResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTListThingPrincipalsResponse *response, NSError *error))completionHandler {
     [[self listThingPrincipals:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTListThingPrincipalsResponse *> * _Nonnull task) {
         AWSIoTListThingPrincipalsResponse *result = task.result;
         NSError *error = task.error;
@@ -1349,7 +1357,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)listThings:(AWSIoTListThingsRequest *)request
- completionHandler:(void (^)(AWSIoTListThingsResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTListThingsResponse *response, NSError *error))completionHandler {
     [[self listThings:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTListThingsResponse *> * _Nonnull task) {
         AWSIoTListThingsResponse *result = task.result;
         NSError *error = task.error;
@@ -1405,7 +1413,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)registerCACertificate:(AWSIoTRegisterCACertificateRequest *)request
-            completionHandler:(void (^)(AWSIoTRegisterCACertificateResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTRegisterCACertificateResponse *response, NSError *error))completionHandler {
     [[self registerCACertificate:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTRegisterCACertificateResponse *> * _Nonnull task) {
         AWSIoTRegisterCACertificateResponse *result = task.result;
         NSError *error = task.error;
@@ -1433,7 +1441,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)registerCertificate:(AWSIoTRegisterCertificateRequest *)request
-          completionHandler:(void (^)(AWSIoTRegisterCertificateResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTRegisterCertificateResponse *response, NSError *error))completionHandler {
     [[self registerCertificate:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTRegisterCertificateResponse *> * _Nonnull task) {
         AWSIoTRegisterCertificateResponse *result = task.result;
         NSError *error = task.error;
@@ -1461,7 +1469,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)rejectCertificateTransfer:(AWSIoTRejectCertificateTransferRequest *)request
-                completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self rejectCertificateTransfer:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -1488,7 +1496,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)replaceTopicRule:(AWSIoTReplaceTopicRuleRequest *)request
-       completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self replaceTopicRule:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -1515,7 +1523,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)setDefaultPolicyVersion:(AWSIoTSetDefaultPolicyVersionRequest *)request
-              completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self setDefaultPolicyVersion:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -1542,7 +1550,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)setLoggingOptions:(AWSIoTSetLoggingOptionsRequest *)request
-        completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self setLoggingOptions:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -1569,7 +1577,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)transferCertificate:(AWSIoTTransferCertificateRequest *)request
-          completionHandler:(void (^)(AWSIoTTransferCertificateResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTTransferCertificateResponse *response, NSError *error))completionHandler {
     [[self transferCertificate:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTTransferCertificateResponse *> * _Nonnull task) {
         AWSIoTTransferCertificateResponse *result = task.result;
         NSError *error = task.error;
@@ -1597,7 +1605,7 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)updateCACertificate:(AWSIoTUpdateCACertificateRequest *)request
-          completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self updateCACertificate:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
 
@@ -1624,19 +1632,19 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)updateCertificate:(AWSIoTUpdateCertificateRequest *)request
-        completionHandler:(void (^)(NSError *error))completionHandler {
+     completionHandler:(void (^)(NSError *error))completionHandler {
     [[self updateCertificate:request] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
         NSError *error = task.error;
-        
+
         if (task.exception) {
             AWSLogError(@"Fatal exception: [%@]", task.exception);
             kill(getpid(), SIGKILL);
         }
-        
+
         if (completionHandler) {
             completionHandler(error);
         }
-        
+
         return nil;
     }];
 }
@@ -1651,20 +1659,20 @@ completionHandler:(void (^)(AWSIoTGetPolicyResponse *response, NSError *error))c
 }
 
 - (void)updateThing:(AWSIoTUpdateThingRequest *)request
-  completionHandler:(void (^)(AWSIoTUpdateThingResponse *response, NSError *error))completionHandler {
+     completionHandler:(void (^)(AWSIoTUpdateThingResponse *response, NSError *error))completionHandler {
     [[self updateThing:request] continueWithBlock:^id _Nullable(AWSTask<AWSIoTUpdateThingResponse *> * _Nonnull task) {
         AWSIoTUpdateThingResponse *result = task.result;
         NSError *error = task.error;
-        
+
         if (task.exception) {
             AWSLogError(@"Fatal exception: [%@]", task.exception);
             kill(getpid(), SIGKILL);
         }
-        
+
         if (completionHandler) {
             completionHandler(result, error);
         }
-        
+
         return nil;
     }];
 }

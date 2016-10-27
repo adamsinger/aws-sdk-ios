@@ -308,6 +308,88 @@ static NSString *testBucketNameGeneral = nil;
     }] waitUntilFinished];
 }
 
+- (void)testBucketCustomEndpoint {
+    
+    id<AWSCredentialsProvider> credentialsProvider = [[[AWSServiceManager defaultServiceManager] defaultServiceConfiguration] credentialsProvider];
+    
+    AWSEndpoint *customEndpoint = [[AWSEndpoint alloc]initWithURLString:@"https://s3.dualstack.us-east-1.amazonaws.com"];
+    
+    AWSServiceConfiguration *serviceConfiguration = [[AWSServiceConfiguration alloc]initWithRegion:AWSRegionUSEast1 endpoint:customEndpoint credentialsProvider:credentialsProvider];
+    
+    [AWSS3 registerS3WithConfiguration:serviceConfiguration forKey:@"customendpoint"];
+    
+    AWSS3 *s3 = [AWSS3 S3ForKey:@"customendpoint"];
+    XCTAssertNotNil(s3);
+    
+    AWSS3ListObjectsRequest *listObjectReq = [AWSS3ListObjectsRequest new];
+    listObjectReq.bucket = testBucketNameGeneral;
+    
+    [[[s3 listObjects:listObjectReq] continueWithBlock:^id _Nullable(AWSTask<AWSS3ListObjectsOutput *> * _Nonnull task) {
+        XCTAssertNil(task.error, @"The request failed. error: [%@]", task.error);
+        XCTAssertTrue([task.result isKindOfClass:[AWSS3ListObjectsOutput class]],@"The response object is not a class of [%@]", NSStringFromClass([AWSS3ListObjectsOutput class]));
+        AWSS3ListObjectsOutput *listObjectsOutput = task.result;
+        
+        for (AWSS3Object *s3Object in listObjectsOutput.contents) {
+            XCTAssertTrue([s3Object.lastModified isKindOfClass:[NSDate class]], @"listObject doesn't contain LastModified(NSDate)");
+        }
+        
+        return nil;
+    }] waitUntilFinished];
+    
+}
+
+- (void)testEmptyFolder{
+    AWSS3 *s3 = [AWSS3 defaultS3];
+    XCTAssertNotNil(s3);
+    
+    XCTAssertNotNil(testBucketNameGeneral);
+    
+    AWSS3PutObjectRequest *putObjectRequest = [AWSS3PutObjectRequest new];
+    
+    putObjectRequest.key = @"test/";
+    putObjectRequest.bucket = testBucketNameGeneral;
+   
+    putObjectRequest.body = nil;
+    NSLog(@"testBucketNameGeneral %@",testBucketNameGeneral);
+    
+    [AWSLogger defaultLogger].logLevel = AWSLogLevelVerbose;
+    
+    [[[[[[s3 putObject:putObjectRequest] continueWithBlock:^id(AWSTask *task)
+      {
+          XCTAssertNil(task.error, @"The request failed. error: [%@]", task.error);
+          AWSS3ListObjectsRequest *list = [AWSS3ListObjectsRequest new];
+          list.bucket = testBucketNameGeneral;
+          return [s3 listObjects:list];
+      }] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
+          XCTAssertNil(task.error);
+          XCTAssertNil(task.exception);
+          AWSS3ListObjectsOutput *listObjects = (AWSS3ListObjectsOutput *)task.result;
+          XCTAssertTrue([[listObjects contents] count] == 1);
+          NSArray<AWSS3Object *> *contents = [listObjects contents];
+          AWSS3Object *fileContent = [contents firstObject];
+          XCTAssertNotNil(fileContent);
+          NSString *key = [fileContent key];
+          XCTAssertTrue([[key substringFromIndex:[key length] - 1] isEqualToString:@"/"]);
+          AWSS3DeleteObjectRequest *del = [AWSS3DeleteObjectRequest new];
+          del.bucket = testBucketNameGeneral;
+          del.key = @"test/";
+          return [s3 deleteObject:del];
+      }] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
+          XCTAssertNil(task.error);
+          XCTAssertNil(task.exception);
+          AWSS3ListObjectsRequest *list = [AWSS3ListObjectsRequest new];
+          list.bucket = testBucketNameGeneral;
+          return [s3 listObjects:list];
+      }] continueWithBlock:^id _Nullable(AWSTask * _Nonnull task) {
+          XCTAssertNil(task.error);
+          XCTAssertNil(task.exception);
+          AWSS3ListObjectsOutput *listObjects = (AWSS3ListObjectsOutput *)task.result;
+          XCTAssertTrue([[listObjects contents] count] == 0);
+          return nil;
+      }] waitUntilFinished];
+}
+
+
 - (void)testPutBucketWithGrants {
     NSString *grantBucketName = [testBucketNameGeneral stringByAppendingString:@"-grant"];
     XCTAssertTrue([AWSS3Tests createBucketWithName:grantBucketName]);
